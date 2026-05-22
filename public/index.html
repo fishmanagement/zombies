@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ZOMBIES</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; color: #e0e0e0; font-family: 'Courier New', monospace; overflow: hidden; }
+canvas { display: block; cursor: crosshair; }
+
+/* Menu */
+#menu { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, #0a0a0a 0%, #1a0a0a 100%); z-index: 100; }
+#menu h1 { font-size: 72px; color: #cc0000; text-shadow: 0 0 30px #cc000066, 0 0 60px #cc000033; margin-bottom: 10px; letter-spacing: 8px; }
+#menu .sub { color: #666; font-size: 14px; margin-bottom: 40px; }
+#menu input { background: #1a1a1a; border: 1px solid #333; color: #e0e0e0; padding: 12px 20px; font-size: 16px; font-family: inherit; margin: 5px; width: 260px; text-align: center; outline: none; }
+#menu input:focus { border-color: #cc0000; }
+#menu button { background: #cc0000; color: white; border: none; padding: 14px 40px; font-size: 16px; font-family: inherit; cursor: pointer; margin: 5px; width: 260px; letter-spacing: 2px; transition: all 0.2s; }
+#menu button:hover { background: #ff2222; transform: scale(1.02); }
+#menu .row { display: flex; gap: 10px; margin-top: 10px; }
+#menu .join-row { display: flex; gap: 5px; }
+#menu .join-row input { width: 160px; }
+#menu .join-row button { width: 95px; padding: 12px; }
+#menu .error { color: #ff4444; font-size: 13px; margin-top: 10px; min-height: 20px; }
+
+/* Lobby */
+#lobby { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0a; z-index: 90; }
+#lobby h2 { font-size: 32px; color: #cc0000; margin-bottom: 5px; }
+#lobby .code { font-size: 48px; color: #ff4444; letter-spacing: 12px; margin: 10px 0 30px; }
+#lobby .players { list-style: none; }
+#lobby .players li { font-size: 18px; padding: 8px 0; border-bottom: 1px solid #222; min-width: 200px; text-align: center; }
+#lobby .players li .host { color: #cc0000; font-size: 12px; }
+#lobby button { background: #cc0000; color: white; border: none; padding: 14px 40px; font-size: 16px; font-family: inherit; cursor: pointer; margin-top: 30px; letter-spacing: 2px; }
+#lobby .wait { color: #666; margin-top: 30px; font-size: 14px; }
+
+/* HUD */
+#hud { position: fixed; bottom: 0; left: 0; right: 0; display: none; z-index: 50; pointer-events: none; }
+.hud-bar { display: flex; justify-content: space-between; align-items: flex-end; padding: 15px 20px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); }
+.hud-left { display: flex; flex-direction: column; gap: 4px; }
+.hud-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.hud-center { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); display: none; z-index: 50; pointer-events: none; }
+.round-display { font-size: 28px; color: #cc0000; text-shadow: 0 0 20px #cc000066; }
+.hp-bar { width: 200px; height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
+.hp-fill { height: 100%; background: #cc0000; transition: width 0.3s; }
+.points { font-size: 28px; color: #ffcc00; text-shadow: 0 0 10px #ffcc0066; }
+.weapon-info { font-size: 14px; color: #aaa; }
+.ammo { font-size: 24px; color: #fff; }
+.ammo span { color: #888; font-size: 16px; }
+.perks { display: flex; gap: 6px; }
+.perk-icon { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #fff3; }
+.kills-display { font-size: 12px; color: #888; }
+.zombies-left { font-size: 12px; color: #cc0000; }
+.interact-prompt { position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); display: none; z-index: 50; pointer-events: none; background: rgba(0,0,0,0.7); padding: 8px 20px; border: 1px solid #cc000066; font-size: 14px; color: #e0e0e0; }
+.interact-prompt .key { color: #ffcc00; font-weight: bold; }
+
+/* Game Over */
+#gameover { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); z-index: 200; }
+#gameover h1 { font-size: 64px; color: #cc0000; margin-bottom: 20px; }
+#gameover .round-info { font-size: 24px; color: #888; margin-bottom: 30px; }
+#gameover table { border-collapse: collapse; }
+#gameover th, #gameover td { padding: 8px 20px; text-align: center; border-bottom: 1px solid #222; }
+#gameover th { color: #cc0000; }
+#gameover button { background: #cc0000; color: white; border: none; padding: 14px 40px; font-size: 16px; font-family: inherit; cursor: pointer; margin-top: 30px; letter-spacing: 2px; }
+
+/* Round announce */
+.round-announce { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 64px; color: #cc0000; text-shadow: 0 0 40px #cc0000; z-index: 60; pointer-events: none; opacity: 0; transition: opacity 0.5s; }
+.round-announce.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="menu">
+  <h1>ZOMBIES</h1>
+  <div class="sub">Top-Down Survival</div>
+  <input type="text" id="nameInput" placeholder="Enter your name" maxlength="12" value="">
+  <button onclick="createGame()">CREATE GAME</button>
+  <div class="join-row">
+    <input type="text" id="codeInput" placeholder="Room code" maxlength="6" style="text-transform:uppercase">
+    <button onclick="joinGame()">JOIN</button>
+  </div>
+  <div class="error" id="menuError"></div>
+</div>
+
+<div id="lobby">
+  <h2>LOBBY</h2>
+  <div class="code" id="roomCode"></div>
+  <ul class="players" id="lobbyPlayers"></ul>
+  <div id="lobbyActions"></div>
+</div>
+
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="hud-bar">
+    <div class="hud-left">
+      <div class="hp-bar"><div class="hp-fill" id="hpFill"></div></div>
+      <div class="perks" id="perksDisplay"></div>
+      <div class="kills-display" id="killsDisplay">Kills: 0</div>
+    </div>
+    <div class="hud-right">
+      <div class="points" id="pointsDisplay">500</div>
+      <div class="weapon-info" id="weaponName">M1911</div>
+      <div class="ammo" id="ammoDisplay">8 <span>/ 96</span></div>
+      <div class="zombies-left" id="zombiesLeft"></div>
+    </div>
+  </div>
+</div>
+<div class="hud-center" id="hudCenter">
+  <div class="round-display">Round <span id="roundDisplay">1</span></div>
+</div>
+<div class="interact-prompt" id="interactPrompt"></div>
+<div class="round-announce" id="roundAnnounce"></div>
+
+<div id="gameover">
+  <h1>GAME OVER</h1>
+  <div class="round-info" id="goRound"></div>
+  <table id="goStats"></table>
+  <button onclick="location.reload()">PLAY AGAIN</button>
+</div>
+
+<script>
+// ─── CONFIG ───
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize); resize();
+
+// ─── STATE ───
+let ws = null;
+let myId = null;
+let isHost = false;
+let gameState = null;
+let mapData = null;
+let camera = { x: 0, y: 0 };
+let mouse = { x: W/2, y: H/2 };
+let keys = {};
+let effects = []; // visual effects
+
+// ─── MENU ───
+function createGame() {
+  const name = document.getElementById('nameInput').value.trim() || 'Player';
+  connect(() => ws.send(JSON.stringify({ type: 'create', name })));
+}
+function joinGame() {
+  const name = document.getElementById('nameInput').value.trim() || 'Player';
+  const code = document.getElementById('codeInput').value.trim().toUpperCase();
+  if (!code) { document.getElementById('menuError').textContent = 'Enter a room code'; return; }
+  connect(() => ws.send(JSON.stringify({ type: 'join', name, code })));
+}
+function connect(onOpen) {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+  ws.onopen = onOpen;
+  ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
+  ws.onerror = () => { document.getElementById('menuError').textContent = 'Connection failed'; };
+}
+
+// ─── MESSAGE HANDLER ───
+function handleMessage(msg) {
+  switch (msg.type) {
+    case 'joined':
+      myId = msg.playerId;
+      isHost = msg.isHost;
+      mapData = msg.map;
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('lobby').style.display = 'flex';
+      document.getElementById('roomCode').textContent = msg.code;
+      break;
+    case 'lobby': {
+      const list = document.getElementById('lobbyPlayers');
+      list.innerHTML = msg.players.map(p =>
+        `<li>${p.name} ${p.isHost ? '<span class="host">(HOST)</span>' : ''}</li>`
+      ).join('');
+      const actions = document.getElementById('lobbyActions');
+      if (isHost) {
+        actions.innerHTML = `<button onclick="startGame()">START GAME</button>`;
+      } else {
+        actions.innerHTML = `<div class="wait">Waiting for host to start...</div>`;
+      }
+      break;
+    }
+    case 'gameStart':
+      document.getElementById('lobby').style.display = 'none';
+      document.getElementById('hud').style.display = 'block';
+      document.getElementById('hudCenter').style.display = 'block';
+      gameLoop();
+      break;
+    case 'state':
+      gameState = msg;
+      break;
+    case 'round':
+      showRoundAnnounce(msg.round);
+      break;
+    case 'shot': {
+      const p = gameState?.players.find(p => p.id === msg.id);
+      if (p) effects.push({ type: 'muzzle', x: p.x, y: p.y, angle: p.angle, t: 6 });
+      break;
+    }
+    case 'zombieDeath':
+      effects.push({ type: 'blood', x: msg.x, y: msg.y, t: 30 });
+      break;
+    case 'playerHit': {
+      const p = gameState?.players.find(p => p.id === msg.id);
+      if (p && msg.id === myId) effects.push({ type: 'hit', t: 15 });
+      break;
+    }
+    case 'playerDown':
+      if (msg.id === myId) effects.push({ type: 'down', t: 999 });
+      break;
+    case 'revive':
+      if (msg.revived === myId) effects = effects.filter(e => e.type !== 'down');
+      break;
+    case 'powerOn':
+      effects.push({ type: 'flash', t: 20 });
+      break;
+    case 'gameover':
+      showGameOver(msg);
+      break;
+    case 'error':
+      document.getElementById('menuError').textContent = msg.msg;
+      break;
+  }
+}
+
+function startGame() { ws.send(JSON.stringify({ type: 'start' })); }
+
+function showRoundAnnounce(round) {
+  const el = document.getElementById('roundAnnounce');
+  el.textContent = `ROUND ${round}`;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function showGameOver(msg) {
+  document.getElementById('gameover').style.display = 'flex';
+  document.getElementById('goRound').textContent = `You survived ${msg.round} rounds`;
+  const table = document.getElementById('goStats');
+  let html = '<tr><th>Player</th><th>Kills</th><th>Downs</th><th>Revives</th><th>Points</th></tr>';
+  for (const p of msg.players) {
+    html += `<tr><td>${p.name}</td><td>${p.kills}</td><td>${p.downs}</td><td>${p.revives}</td><td>${p.points}</td></tr>`;
+  }
+  table.innerHTML = html;
+}
+
+// ─── INPUT ───
+window.addEventListener('keydown', (e) => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.key.toLowerCase() === 'e' || e.key.toLowerCase() === 'f') {
+    ws?.send(JSON.stringify({ type: 'interact' }));
+  }
+  if (e.key.toLowerCase() === 'q' || e.key === '1' || e.key === '2') {
+    ws?.send(JSON.stringify({ type: 'switch' }));
+  }
+  if (e.key.toLowerCase() === 'r') {
+    keys.reload = true;
+  }
+});
+window.addEventListener('keyup', (e) => {
+  keys[e.key.toLowerCase()] = false;
+  if (e.key.toLowerCase() === 'r') keys.reload = false;
+});
+window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+window.addEventListener('mousedown', () => { keys.shoot = true; });
+window.addEventListener('mouseup', () => { keys.shoot = false; });
+window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ─── GAME LOOP ───
+function gameLoop() {
+  if (!gameState) { requestAnimationFrame(gameLoop); return; }
+
+  // Send inputs
+  const me = gameState.players.find(p => p.id === myId);
+  if (me) {
+    const worldMouseX = mouse.x + camera.x;
+    const worldMouseY = mouse.y + camera.y;
+    const angle = Math.atan2(worldMouseY - me.y, worldMouseX - me.x);
+    ws.send(JSON.stringify({
+      type: 'input',
+      inputs: {
+        up: !!(keys.w || keys.arrowup),
+        down: !!(keys.s || keys.arrowdown),
+        left: !!(keys.a || keys.arrowleft),
+        right: !!(keys.d || keys.arrowright),
+        shoot: !!keys.shoot,
+        reload: !!keys.reload || !!keys.r,
+      },
+      angle,
+    }));
+
+    // Camera follow
+    camera.x += (me.x - W/2 - camera.x) * 0.1;
+    camera.y += (me.y - H/2 - camera.y) * 0.1;
+    camera.x = Math.max(0, Math.min(camera.x, mapData.width - W));
+    camera.y = Math.max(0, Math.min(camera.y, mapData.height - H));
+  }
+
+  render();
+  updateHUD();
+  requestAnimationFrame(gameLoop);
+}
+
+// ─── RENDER ───
+function render() {
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  ctx.translate(-camera.x, -camera.y);
+
+  // Floor
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(0, 0, mapData.width, mapData.height);
+  // Grid
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x < mapData.width; x += 50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,mapData.height); ctx.stroke(); }
+  for (let y = 0; y < mapData.height; y += 50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(mapData.width,y); ctx.stroke(); }
+
+  // Walls
+  ctx.fillStyle = '#333';
+  for (const w of mapData.walls) ctx.fillRect(w.x, w.y, w.w, w.h);
+
+  // Doors (closed)
+  for (const d of gameState.doors) {
+    const door = mapData.doors.find(dd => dd.id === d.id);
+    if (!d.open && door) {
+      ctx.fillStyle = '#664400';
+      ctx.fillRect(door.x, door.y, door.w, door.h);
+      // Price label
+      const me = gameState.players.find(p => p.id === myId);
+      if (me) {
+        const dx = (door.x + door.w/2) - me.x, dy = (door.y + door.h/2) - me.y;
+        if (Math.sqrt(dx*dx+dy*dy) < 120) {
+          ctx.fillStyle = '#ffcc00';
+          ctx.font = '12px Courier New';
+          ctx.textAlign = 'center';
+          ctx.fillText(`[F] ${door.label} - ${door.price}pts`, door.x + door.w/2, door.y - 10);
+        }
+      }
+    }
+  }
+
+  // Barricades
+  for (const b of gameState.barricades) {
+    const bd = mapData.barricades.find(bb => bb.id === b.id);
+    if (bd) {
+      const ratio = b.hp / b.maxHp;
+      ctx.fillStyle = ratio > 0.5 ? '#8B4513' : ratio > 0 ? '#654321' : '#333';
+      ctx.fillRect(bd.x, bd.y, bd.w, bd.h);
+      if (ratio > 0 && ratio < 1) {
+        // HP bar
+        ctx.fillStyle = '#222';
+        ctx.fillRect(bd.x - 5, bd.y - 8, bd.w + 10, 4);
+        ctx.fillStyle = ratio > 0.5 ? '#4a4' : '#a44';
+        ctx.fillRect(bd.x - 5, bd.y - 8, (bd.w + 10) * ratio, 4);
+      }
+    }
+  }
+
+  // Wall buys
+  for (const wb of mapData.wallbuys) {
+    ctx.fillStyle = '#2a2a4a';
+    ctx.fillRect(wb.x - 20, wb.y - 15, 40, 30);
+    ctx.strokeStyle = '#4a4aaa';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(wb.x - 20, wb.y - 15, 40, 30);
+    ctx.fillStyle = '#8888ff';
+    ctx.font = '10px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(wb.name, wb.x, wb.y + 2);
+    ctx.fillText(`${wb.price}`, wb.x, wb.y + 12);
+  }
+
+  // Perk machines
+  for (const pl of mapData.perkLocations) {
+    ctx.fillStyle = gameState.powerOn ? pl.color : '#333';
+    ctx.fillRect(pl.x - 15, pl.y - 20, 30, 40);
+    ctx.strokeStyle = '#fff3';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pl.x - 15, pl.y - 20, 30, 40);
+    ctx.fillStyle = gameState.powerOn ? '#fff' : '#555';
+    ctx.font = '8px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(pl.name, pl.x, pl.y);
+    if (gameState.powerOn) ctx.fillText(`${pl.price}`, pl.x, pl.y + 10);
+  }
+
+  // Mystery box
+  {
+    const mb = mapData.mysteryBox;
+    ctx.fillStyle = '#553300';
+    ctx.fillRect(mb.x, mb.y, mb.w, mb.h);
+    ctx.strokeStyle = '#ffcc00';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(mb.x, mb.y, mb.w, mb.h);
+    ctx.fillStyle = '#ffcc00';
+    ctx.font = '10px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText('? BOX ?', mb.x + mb.w/2, mb.y + mb.h/2 + 3);
+    ctx.fillText(`${mb.price}`, mb.x + mb.w/2, mb.y + mb.h + 12);
+  }
+
+  // Power switch
+  {
+    const ps = mapData.powerSwitch;
+    ctx.fillStyle = gameState.powerOn ? '#44ff44' : '#444';
+    ctx.fillRect(ps.x - 10, ps.y - 15, 20, 30);
+    ctx.fillStyle = '#fff';
+    ctx.font = '8px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(gameState.powerOn ? 'ON' : 'PWR', ps.x, ps.y + 3);
+  }
+
+  // Zombies
+  for (const z of gameState.zombies) {
+    const hpRatio = z.hp / z.maxHp;
+    // Body
+    ctx.fillStyle = `rgb(${60 + Math.floor(hpRatio * 40)}, ${80 + Math.floor(hpRatio * 50)}, ${40})`;
+    ctx.beginPath();
+    ctx.arc(z.x, z.y, 12, 0, Math.PI * 2);
+    ctx.fill();
+    // Eyes
+    ctx.fillStyle = '#ff0';
+    ctx.beginPath(); ctx.arc(z.x - 4, z.y - 3, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(z.x + 4, z.y - 3, 2, 0, Math.PI * 2); ctx.fill();
+    // HP bar
+    if (hpRatio < 1) {
+      ctx.fillStyle = '#222';
+      ctx.fillRect(z.x - 12, z.y - 20, 24, 3);
+      ctx.fillStyle = hpRatio > 0.5 ? '#4a4' : '#a44';
+      ctx.fillRect(z.x - 12, z.y - 20, 24 * hpRatio, 3);
+    }
+  }
+
+  // Players
+  for (const p of gameState.players) {
+    if (p.dead) continue;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.angle);
+
+    // Body
+    if (p.downed) {
+      ctx.fillStyle = '#884444';
+      ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 200) * 0.3;
+    } else if (p.id === myId) {
+      ctx.fillStyle = '#4488ff';
+    } else {
+      ctx.fillStyle = '#44cc44';
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Gun
+    ctx.fillStyle = '#888';
+    ctx.fillRect(8, -2, 14, 4);
+
+    // Direction indicator
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(6, 0, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // Name
+    ctx.fillStyle = p.id === myId ? '#4488ff' : '#44cc44';
+    ctx.font = '10px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(p.name, p.x, p.y - 22);
+
+    // Perk indicators
+    if (p.perks.length > 0) {
+      p.perks.forEach((perk, i) => {
+        const colors = { juggernog: '#ff4444', speedcola: '#44ff44', doubletap: '#ffff44', quickrevive: '#4444ff' };
+        ctx.fillStyle = colors[perk] || '#fff';
+        ctx.fillRect(p.x - (p.perks.length * 5) + i * 10, p.y + 18, 8, 3);
+      });
+    }
+  }
+
+  // Effects
+  for (let i = effects.length - 1; i >= 0; i--) {
+    const e = effects[i];
+    e.t--;
+    if (e.t <= 0) { effects.splice(i, 1); continue; }
+    if (e.type === 'muzzle') {
+      ctx.fillStyle = `rgba(255, 200, 50, ${e.t / 6})`;
+      ctx.beginPath();
+      ctx.arc(e.x + Math.cos(e.angle) * 24, e.y + Math.sin(e.angle) * 24, 6 + (6 - e.t), 0, Math.PI * 2);
+      ctx.fill();
+    } else if (e.type === 'blood') {
+      ctx.fillStyle = `rgba(150, 0, 0, ${e.t / 30})`;
+      for (let j = 0; j < 5; j++) {
+        ctx.beginPath();
+        ctx.arc(e.x + (Math.random()-0.5)*20, e.y + (Math.random()-0.5)*20, 3, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+  }
+
+  ctx.restore();
+
+  // Screen effects
+  for (const e of effects) {
+    if (e.type === 'hit') {
+      ctx.fillStyle = `rgba(255, 0, 0, ${e.t / 30})`;
+      ctx.fillRect(0, 0, W, H);
+    } else if (e.type === 'down') {
+      ctx.fillStyle = `rgba(100, 0, 0, ${0.3 + Math.sin(Date.now()/500)*0.1})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#ff4444';
+      ctx.font = '24px Courier New';
+      ctx.textAlign = 'center';
+      ctx.fillText('YOU ARE DOWN - NEED REVIVE', W/2, H/2);
+    } else if (e.type === 'flash') {
+      ctx.fillStyle = `rgba(255, 255, 255, ${e.t / 20})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  // Fog / visibility (vignette)
+  const gradient = ctx.createRadialGradient(W/2, H/2, Math.min(W,H) * 0.3, W/2, H/2, Math.min(W,H) * 0.7);
+  gradient.addColorStop(0, 'rgba(0,0,0,0)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, W, H);
+
+  // Minimap
+  renderMinimap();
+
+  // Interact prompt
+  checkInteractPrompt();
+}
+
+function renderMinimap() {
+  const mmW = 160, mmH = 120;
+  const mmX = W - mmW - 15, mmY = 15;
+  const sx = mmW / mapData.width, sy = mmH / mapData.height;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(mmX, mmY, mmW, mmH);
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(mmX, mmY, mmW, mmH);
+  // Walls
+  ctx.fillStyle = '#444';
+  for (const w of mapData.walls) {
+    ctx.fillRect(mmX + w.x*sx, mmY + w.y*sy, Math.max(w.w*sx, 1), Math.max(w.h*sy, 1));
+  }
+  // Players
+  for (const p of gameState.players) {
+    if (p.dead) continue;
+    ctx.fillStyle = p.id === myId ? '#4488ff' : '#44cc44';
+    ctx.fillRect(mmX + p.x*sx - 2, mmY + p.y*sy - 2, 4, 4);
+  }
+  // Zombies
+  ctx.fillStyle = '#ff4444';
+  for (const z of gameState.zombies) {
+    ctx.fillRect(mmX + z.x*sx - 1, mmY + z.y*sy - 1, 2, 2);
+  }
+}
+
+function checkInteractPrompt() {
+  const me = gameState?.players.find(p => p.id === myId);
+  const prompt = document.getElementById('interactPrompt');
+  if (!me || me.dead || me.downed) { prompt.style.display = 'none'; return; }
+
+  let text = '';
+  // Doors
+  for (const ds of gameState.doors) {
+    if (ds.open) continue;
+    const door = mapData.doors.find(d => d.id === ds.id);
+    if (!door) continue;
+    const dx = (door.x + door.w/2) - me.x, dy = (door.y + door.h/2) - me.y;
+    if (Math.sqrt(dx*dx + dy*dy) < 80) {
+      text = `<span class="key">[F]</span> Open ${door.label} - <span style="color:#ffcc00">${door.price}</span> pts`;
+    }
+  }
+  // Wall buys
+  for (const wb of mapData.wallbuys) {
+    const dx = wb.x - me.x, dy = wb.y - me.y;
+    if (Math.sqrt(dx*dx + dy*dy) < 60) {
+      text = `<span class="key">[F]</span> Buy ${wb.name} - <span style="color:#ffcc00">${wb.price}</span> pts`;
+    }
+  }
+  // Perks
+  if (gameState.powerOn) {
+    for (const pl of mapData.perkLocations) {
+      const dx = pl.x - me.x, dy = pl.y - me.y;
+      if (Math.sqrt(dx*dx + dy*dy) < 60 && !me.perks.includes(pl.perk)) {
+        text = `<span class="key">[F]</span> Buy ${pl.name} - <span style="color:#ffcc00">${pl.price}</span> pts`;
+      }
+    }
+  }
+  // Mystery box
+  {
+    const mb = mapData.mysteryBox;
+    const dx = (mb.x+30) - me.x, dy = (mb.y+20) - me.y;
+    if (Math.sqrt(dx*dx+dy*dy) < 60) {
+      text = `<span class="key">[F]</span> Mystery Box - <span style="color:#ffcc00">${mb.price}</span> pts`;
+    }
+  }
+  // Power
+  if (!gameState.powerOn) {
+    const ps = mapData.powerSwitch;
+    const dx = ps.x - me.x, dy = ps.y - me.y;
+    if (Math.sqrt(dx*dx+dy*dy) < 60) {
+      text = `<span class="key">[F]</span> Turn on Power`;
+    }
+  }
+  // Barricade repair
+  for (const b of gameState.barricades) {
+    const bd = mapData.barricades.find(bb => bb.id === b.id);
+    if (!bd || b.hp >= b.maxHp) continue;
+    const dx = (bd.x+bd.w/2) - me.x, dy = (bd.y+bd.h/2) - me.y;
+    if (Math.sqrt(dx*dx+dy*dy) < 60) {
+      text = `<span class="key">[F]</span> Repair Barricade - <span style="color:#ffcc00">+10</span> pts`;
+    }
+  }
+
+  if (text) {
+    prompt.innerHTML = text;
+    prompt.style.display = 'block';
+  } else {
+    prompt.style.display = 'none';
+  }
+}
+
+function updateHUD() {
+  const me = gameState?.players.find(p => p.id === myId);
+  if (!me) return;
+  document.getElementById('hpFill').style.width = `${(me.hp / me.maxHp) * 100}%`;
+  document.getElementById('hpFill').style.background = me.hp > 50 ? '#cc0000' : '#ff0000';
+  document.getElementById('pointsDisplay').textContent = me.points;
+  document.getElementById('weaponName').textContent = mapData.weapons[me.weapon]?.name || me.weapon;
+  document.getElementById('ammoDisplay').innerHTML = `${me.ammo} <span>/ ${me.reserve}</span>`;
+  document.getElementById('roundDisplay').textContent = gameState.round;
+  document.getElementById('killsDisplay').textContent = `Kills: ${me.kills}`;
+  document.getElementById('zombiesLeft').textContent = `Zombies: ${gameState.zombiesRemaining}`;
+  // Perks
+  const perksEl = document.getElementById('perksDisplay');
+  perksEl.innerHTML = me.perks.map(p => {
+    const colors = { juggernog: '#ff4444', speedcola: '#44ff44', doubletap: '#ffff44', quickrevive: '#4444ff' };
+    return `<div class="perk-icon" style="background:${colors[p]||'#888'}" title="${p}"></div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
