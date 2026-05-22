@@ -12,21 +12,22 @@ const wss = new WebSocketServer({ server });
 app.use(express.static(join(__dirname, 'public')));
 
 // ─── GAME CONFIG ───
-const TICK_RATE = 20; // 20 ticks/sec
-const MAP_W = 2400, MAP_H = 1800;
-const PLAYER_SPEED = 3.5;
+const TICK_RATE = 20;
+const TICK_MS = 1000 / TICK_RATE;
+const MAP_W = 2000, MAP_H = 1400;
+const PLAYER_SPEED = 4;
 const PLAYER_RADIUS = 14;
-const ZOMBIE_RADIUS = 12;
-const BULLET_SPEED = 12;
-const BARRICADE_HP = 100;
+const ZOMBIE_RADIUS = 11;
+const BULLET_SPEED = 14;
+const BARRICADE_HP = 80;
 
 const WEAPONS = {
-  pistol:   { name: 'M1911',     damage: 30,  fireRate: 300, reload: 1500, magSize: 8,  maxAmmo: 96,  spread: 0.04, bulletCount: 1, price: 0,    range: 500 },
-  shotgun:  { name: 'Olympia',   damage: 40,  fireRate: 800, reload: 2500, magSize: 2,  maxAmmo: 54,  spread: 0.15, bulletCount: 6, price: 500,  range: 300 },
-  smg:      { name: 'MP40',      damage: 25,  fireRate: 120, reload: 2000, magSize: 32, maxAmmo: 192, spread: 0.08, bulletCount: 1, price: 1000, range: 400 },
-  ar:       { name: 'STG-44',    damage: 35,  fireRate: 150, reload: 2500, magSize: 30, maxAmmo: 210, spread: 0.05, bulletCount: 1, price: 1200, range: 600 },
-  lmg:      { name: 'MG42',      damage: 30,  fireRate: 80,  reload: 4000, magSize: 75, maxAmmo: 300, spread: 0.10, bulletCount: 1, price: 1750, range: 500 },
-  ray:      { name: 'Ray Gun',   damage: 150, fireRate: 400, reload: 3000, magSize: 20, maxAmmo: 160, spread: 0.02, bulletCount: 1, price: 950,  range: 700 },
+  pistol:   { name: 'M1911',     damage: 30,  fireRate: 280, reload: 1500, magSize: 8,  maxAmmo: 96,  spread: 0.03, bulletCount: 1, price: 0,    range: 500 },
+  shotgun:  { name: 'Olympia',   damage: 45,  fireRate: 700, reload: 2200, magSize: 2,  maxAmmo: 54,  spread: 0.18, bulletCount: 6, price: 500,  range: 250 },
+  smg:      { name: 'MP40',      damage: 22,  fireRate: 100, reload: 1800, magSize: 32, maxAmmo: 192, spread: 0.09, bulletCount: 1, price: 1000, range: 380 },
+  ar:       { name: 'STG-44',    damage: 35,  fireRate: 140, reload: 2200, magSize: 30, maxAmmo: 210, spread: 0.04, bulletCount: 1, price: 1200, range: 550 },
+  lmg:      { name: 'MG42',      damage: 28,  fireRate: 70,  reload: 3500, magSize: 75, maxAmmo: 300, spread: 0.11, bulletCount: 1, price: 1750, range: 450 },
+  ray:      { name: 'Ray Gun',   damage: 150, fireRate: 350, reload: 2800, magSize: 20, maxAmmo: 160, spread: 0.02, bulletCount: 1, price: 950,  range: 600 },
 };
 
 const PERKS = {
@@ -36,78 +37,75 @@ const PERKS = {
   quickrevive:{ name: 'Quick Revive',price: 1500, color: '#4444ff' },
 };
 
-// ─── MAP DEFINITION ───
-// Rooms, walls, doors, spawn points, wall-buys, perks, mystery box
+// ─── SIMPLIFIED MAP ───
+// Smaller, more open map so zombies can actually reach players
 const WALLS = [
-  // Outer walls
-  {x:0,y:0,w:MAP_W,h:20},         // top
-  {x:0,y:MAP_H-20,w:MAP_W,h:20},  // bottom
-  {x:0,y:0,w:20,h:MAP_H},         // left
-  {x:MAP_W-20,y:0,w:20,h:MAP_H},  // right
-  // Room 1 (spawn) - center area
-  {x:400,y:0,w:20,h:350},          // left wall top
-  {x:400,y:450,w:20,h:350},        // left wall bottom (door gap 350-450)
-  {x:400,y:800,w:20,h:200},
-  {x:400,y:1100,w:20,h:350},       // left wall lower top (door gap 1000-1100)
-  {x:400,y:1450,w:20,h:350},
-  {x:1000,y:0,w:20,h:600},         // right wall top
-  {x:1000,y:750,w:20,h:200},       // right wall mid (door gap 600-750)
-  {x:1000,y:950,w:20,h:850},       // right wall bottom
-  // Room 2 - left area
-  {x:20,y:800,w:380,h:20},         // divider
-  // Room 3 - right area
-  {x:1020,y:600,w:400,h:20},
-  {x:1400,y:0,w:20,h:600},
-  {x:1400,y:620,w:20,h:500},
-  {x:1020,y:1100,w:400,h:20},
-  // Room 4 - far right (power room)
-  {x:1420,y:300,w:580,h:20},
-  {x:1420,y:900,w:400,h:20},
-  {x:1820,y:320,w:20,h:580},       // inner wall (door gap at top)
-  {x:1840,y:600,w:160,h:20},
+  // Outer boundary
+  { x: 0, y: 0, w: MAP_W, h: 16 },
+  { x: 0, y: MAP_H - 16, w: MAP_W, h: 16 },
+  { x: 0, y: 0, w: 16, h: MAP_H },
+  { x: MAP_W - 16, y: 0, w: 16, h: MAP_H },
+
+  // Room 1 (spawn) dividers — left side wall with door gap
+  { x: 500, y: 0, w: 16, h: 300 },
+  { x: 500, y: 420, w: 16, h: 280 },    // gap 300-420 = door d1
+  { x: 500, y: 820, w: 16, h: 280 },
+  { x: 500, y: 1220, w: 16, h: 180 },   // gap 1100-1220 = door d2
+
+  // Room 1 right wall with door gap
+  { x: 1000, y: 0, w: 16, h: 500 },
+  { x: 1000, y: 620, w: 16, h: 780 },   // gap 500-620 = door d3
+
+  // Room 3 (power room) wall
+  { x: 1400, y: 200, w: 16, h: 400 },
+  { x: 1400, y: 720, w: 16, h: 480 },   // gap 600-720 = door d4
 ];
 
 const DOORS = [
-  { id: 'd1', x: 400, y: 350, w: 20, h: 100, price: 750, open: false, label: 'Left Wing' },
-  { id: 'd2', x: 400, y: 1000, w: 20, h: 100, price: 750, open: false, label: 'Basement' },
-  { id: 'd3', x: 1000, y: 600, w: 20, h: 150, price: 1000, open: false, label: 'East Wing' },
-  { id: 'd4', x: 1400, y: 600, w: 20, h: 20, price: 1250, open: false, label: 'Power Room' },
+  { id: 'd1', x: 500, y: 300, w: 16, h: 120, price: 750, open: false, label: 'Left Wing' },
+  { id: 'd2', x: 500, y: 1100, w: 16, h: 120, price: 750, open: false, label: 'Storage' },
+  { id: 'd3', x: 1000, y: 500, w: 16, h: 120, price: 1000, open: false, label: 'East Wing' },
+  { id: 'd4', x: 1400, y: 600, w: 16, h: 120, price: 1250, open: false, label: 'Power Room' },
 ];
 
+// Barricades are entry points — zombies spawn behind them and must break through
 const BARRICADES = [
-  { id: 'b1', x: 20, y: 200, w: 20, h: 80, hp: BARRICADE_HP, maxHp: BARRICADE_HP, side: 'left' },
-  { id: 'b2', x: 20, y: 600, w: 20, h: 80, hp: BARRICADE_HP, maxHp: BARRICADE_HP, side: 'left' },
-  { id: 'b3', x: 20, y: 1400, w: 20, h: 80, hp: BARRICADE_HP, maxHp: BARRICADE_HP, side: 'left' },
-  { id: 'b4', x: MAP_W-40, y: 400, w: 20, h: 80, hp: BARRICADE_HP, maxHp: BARRICADE_HP, side: 'right' },
-  { id: 'b5', x: MAP_W-40, y: 1200, w: 20, h: 80, hp: BARRICADE_HP, maxHp: BARRICADE_HP, side: 'right' },
-  { id: 'b6', x: 700, y: MAP_H-40, w: 80, h: 20, hp: BARRICADE_HP, maxHp: BARRICADE_HP, side: 'bottom' },
+  { id: 'b1', x: 16, y: 150, w: 16, h: 70, hp: BARRICADE_HP, maxHp: BARRICADE_HP },
+  { id: 'b2', x: 16, y: 600, w: 16, h: 70, hp: BARRICADE_HP, maxHp: BARRICADE_HP },
+  { id: 'b3', x: 16, y: 1100, w: 16, h: 70, hp: BARRICADE_HP, maxHp: BARRICADE_HP },
+  { id: 'b4', x: MAP_W - 32, y: 300, w: 16, h: 70, hp: BARRICADE_HP, maxHp: BARRICADE_HP },
+  { id: 'b5', x: MAP_W - 32, y: 900, w: 16, h: 70, hp: BARRICADE_HP, maxHp: BARRICADE_HP },
+  { id: 'b6', x: 700, y: MAP_H - 32, w: 70, h: 16, hp: BARRICADE_HP, maxHp: BARRICADE_HP },
+];
+
+// Zombie spawn points — just outside the map at barricade locations
+const ZOMBIE_SPAWNS = [
+  { x: 5, y: 185, barricade: 'b1' },
+  { x: 5, y: 635, barricade: 'b2' },
+  { x: 5, y: 1135, barricade: 'b3' },
+  { x: MAP_W - 5, y: 335, barricade: 'b4' },
+  { x: MAP_W - 5, y: 935, barricade: 'b5' },
+  { x: 735, y: MAP_H - 5, barricade: 'b6' },
 ];
 
 const WALLBUYS = [
-  { weapon: 'shotgun', x: 420, y: 200, room: 0 },
-  { weapon: 'smg', x: 200, y: 850, room: 1 },
-  { weapon: 'ar', x: 1100, y: 300, room: 2 },
-  { weapon: 'lmg', x: 1500, y: 700, room: 3 },
+  { weapon: 'shotgun', x: 550, y: 200, room: 0 },
+  { weapon: 'smg', x: 250, y: 850, room: 1 },
+  { weapon: 'ar', x: 1100, y: 350, room: 2 },
+  { weapon: 'lmg', x: 1500, y: 800, room: 3 },
 ];
 
 const PERK_LOCATIONS = [
-  { perk: 'quickrevive', x: 700, y: 300, room: 0 },
-  { perk: 'juggernog', x: 150, y: 1200, room: 1 },
-  { perk: 'speedcola', x: 1200, y: 800, room: 2 },
+  { perk: 'quickrevive', x: 750, y: 250, room: 0 },
+  { perk: 'juggernog', x: 250, y: 1200, room: 1 },
+  { perk: 'speedcola', x: 1200, y: 900, room: 2 },
   { perk: 'doubletap', x: 1600, y: 500, room: 3 },
 ];
 
-const MYSTERY_BOX = { x: 1700, y: 700, w: 60, h: 40, price: 950, room: 3 };
-const POWER_SWITCH = { x: 1900, y: 450, room: 3, active: false };
+const MYSTERY_BOX = { x: 1550, y: 350, w: 60, h: 40, price: 950 };
+const POWER_SWITCH = { x: 1800, y: 400 };
 const PLAYER_SPAWNS = [
-  { x: 700, y: 400 }, { x: 700, y: 600 }, { x: 600, y: 500 }, { x: 800, y: 500 }
-];
-
-const ZOMBIE_SPAWNS = [
-  // From barricades
-  { x: 10, y: 240 }, { x: 10, y: 640 }, { x: 10, y: 1440 },
-  { x: MAP_W-10, y: 440 }, { x: MAP_W-10, y: 1240 },
-  { x: 740, y: MAP_H-10 },
+  { x: 750, y: 500 }, { x: 750, y: 700 }, { x: 650, y: 600 }, { x: 850, y: 600 }
 ];
 
 // ─── ROOMS ───
@@ -124,7 +122,8 @@ function createRoom(code) {
     zombiesSpawned: 0,
     zombiesToSpawn: 0,
     spawnTimer: 0,
-    state: 'lobby', // lobby, playing, gameover
+    roundPause: 0,
+    state: 'lobby',
     doors: DOORS.map(d => ({ ...d })),
     barricades: BARRICADES.map(b => ({ ...b })),
     powerOn: false,
@@ -139,7 +138,6 @@ function createPlayer(id, name) {
     id, name,
     x: spawn.x, y: spawn.y,
     angle: 0, moving: false,
-    vx: 0, vy: 0,
     hp: 100, maxHp: 100,
     points: 500,
     weapon: 'pistol',
@@ -158,28 +156,27 @@ function createPlayer(id, name) {
 }
 
 function createZombie(room, round) {
-  const spawn = ZOMBIE_SPAWNS[Math.floor(Math.random() * ZOMBIE_SPAWNS.length)];
-  const hpBase = 100 + round * 50;
-  const speedBase = 1.2 + Math.min(round * 0.1, 2.0);
+  const spawnInfo = ZOMBIE_SPAWNS[Math.floor(Math.random() * ZOMBIE_SPAWNS.length)];
+  const hpBase = 80 + round * 40;
+  const speedBase = 1.0 + Math.min(round * 0.15, 2.5);
   return {
     id: Math.random().toString(36).substr(2, 9),
-    x: spawn.x, y: spawn.y,
-    hp: hpBase + Math.random() * 30,
-    maxHp: hpBase + 30,
-    speed: speedBase + Math.random() * 0.3,
-    targetId: null,
-    attackCooldown: 0,
-    damage: 20 + Math.floor(round / 3) * 5,
-    path: [], pathTimer: 0,
-    stuck: 0,
+    x: spawnInfo.x + (Math.random() - 0.5) * 10,
+    y: spawnInfo.y + (Math.random() - 0.5) * 10,
+    hp: hpBase + Math.random() * 20,
+    maxHp: hpBase + 20,
+    speed: speedBase + Math.random() * 0.4,
+    targetBarricade: spawnInfo.barricade,
+    phase: 'approach_barricade', // approach_barricade -> break_barricade -> hunt
+    attackTimer: 0,
+    damage: 20 + Math.floor(round / 2) * 5,
+    stuckTimer: 0,
+    wanderAngle: Math.random() * Math.PI * 2,
+    wanderTimer: 0,
   };
 }
 
 // ─── COLLISION ───
-function rectCollide(ax, ay, aw, ah, bx, by, bw, bh) {
-  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
-}
-
 function circleRect(cx, cy, cr, rx, ry, rw, rh) {
   const closestX = Math.max(rx, Math.min(cx, rx + rw));
   const closestY = Math.max(ry, Math.min(cy, ry + rh));
@@ -192,24 +189,67 @@ function getWalls(room) {
   for (const d of room.doors) {
     if (!d.open) walls.push(d);
   }
+  // Intact barricades act as walls
+  for (const b of room.barricades) {
+    if (b.hp > 0) {
+      const bd = BARRICADES.find(bb => bb.id === b.id);
+      if (bd) walls.push(bd);
+    }
+  }
   return walls;
 }
 
-function canMove(x, y, radius, room) {
-  const walls = getWalls(room);
+function getWallsForZombie(room, zombie) {
+  // Zombies ignore their target barricade (they attack it instead)
+  const walls = [...WALLS];
+  for (const d of room.doors) {
+    if (!d.open) walls.push(d);
+  }
+  for (const b of room.barricades) {
+    if (b.hp > 0 && b.id !== zombie.targetBarricade) {
+      const bd = BARRICADES.find(bb => bb.id === b.id);
+      if (bd) walls.push(bd);
+    }
+  }
+  return walls;
+}
+
+function canMove(x, y, radius, walls) {
   for (const w of walls) {
     if (circleRect(x, y, radius, w.x, w.y, w.w, w.h)) return false;
   }
   return x - radius >= 0 && x + radius <= MAP_W && y - radius >= 0 && y + radius <= MAP_H;
 }
 
+function dist(x1, y1, x2, y2) {
+  const dx = x1 - x2, dy = y1 - y2;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function moveToward(entity, tx, ty, speed, walls, radius) {
+  const dx = tx - entity.x, dy = ty - entity.y;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  if (d < 2) return false;
+  const mx = (dx / d) * speed, my = (dy / d) * speed;
+  const nx = entity.x + mx, ny = entity.y + my;
+  let moved = false;
+  if (canMove(nx, entity.y, radius, walls)) { entity.x = nx; moved = true; }
+  if (canMove(entity.x, ny, radius, walls)) { entity.y = ny; moved = true; }
+  return moved;
+}
+
 // ─── GAME LOOP ───
 function startRound(room) {
   room.round++;
-  room.zombiesToSpawn = Math.floor(6 + room.round * 2 + room.players.size * 2);
+  room.zombiesToSpawn = Math.floor(4 + room.round * 3 + room.players.size * 2);
   room.zombiesSpawned = 0;
   room.zombiesRemaining = room.zombiesToSpawn;
   room.spawnTimer = 0;
+  room.roundPause = 0;
+  // Heal players between rounds
+  for (const p of room.players.values()) {
+    if (!p.dead && !p.downed) p.hp = p.maxHp;
+  }
   broadcast(room, { type: 'round', round: room.round });
 }
 
@@ -219,7 +259,7 @@ function gameTick(room) {
   room.lastTick = now;
   if (room.state !== 'playing') return;
 
-  // Check if all players dead
+  // Check all dead
   const alivePlayers = [...room.players.values()].filter(p => !p.dead);
   if (alivePlayers.length === 0) {
     room.state = 'gameover';
@@ -228,36 +268,36 @@ function gameTick(room) {
     return;
   }
 
-  // Spawn zombies
-  room.spawnTimer -= dt;
-  if (room.zombiesSpawned < room.zombiesToSpawn && room.spawnTimer <= 0 && room.zombies.length < 24) {
-    room.zombies.push(createZombie(room, room.round));
-    room.zombiesSpawned++;
-    room.spawnTimer = Math.max(500, 2000 - room.round * 100);
+  // Round pause between rounds
+  if (room.roundPause > 0) {
+    room.roundPause -= dt;
+    if (room.roundPause <= 0) startRound(room);
+    broadcastState(room);
+    return;
   }
 
-  // Update players
+  // Spawn zombies
+  room.spawnTimer -= dt;
+  if (room.zombiesSpawned < room.zombiesToSpawn && room.spawnTimer <= 0 && room.zombies.length < 20) {
+    room.zombies.push(createZombie(room, room.round));
+    room.zombiesSpawned++;
+    room.spawnTimer = Math.max(400, 1800 - room.round * 80);
+  }
+
+  // === PLAYERS ===
   for (const p of room.players.values()) {
     if (p.dead) continue;
 
-    // Downed state
     if (p.downed) {
       p.downTimer -= dt;
-      if (p.downTimer <= 0) {
-        p.dead = true;
-        p.downs++;
-        continue;
-      }
-      // Check if another player is close enough to revive
+      if (p.downTimer <= 0) { p.dead = true; continue; }
       for (const other of room.players.values()) {
         if (other.id === p.id || other.dead || other.downed) continue;
-        const dx = other.x - p.x, dy = other.y - p.y;
-        if (Math.sqrt(dx*dx + dy*dy) < 50) {
-          // Auto-revive if close for 3 seconds (simplified)
-          p.downTimer += dt * 2; // Slow the bleedout when someone's near
-          if (p.downTimer > 30000) { // Fully revived
+        if (dist(other.x, other.y, p.x, p.y) < 50) {
+          p.downTimer += dt * 3;
+          if (p.downTimer > 30000) {
             p.downed = false;
-            p.hp = 50;
+            p.hp = p.maxHp * 0.5;
             other.points += 100;
             other.revives++;
             broadcast(room, { type: 'revive', reviver: other.id, revived: p.id });
@@ -269,18 +309,18 @@ function gameTick(room) {
 
     // Movement
     let speed = PLAYER_SPEED;
-    if (p.perks.includes('speedcola')) speed *= 1.1;
+    if (p.perks.includes('speedcola')) speed *= 1.15;
     let mx = 0, my = 0;
     if (p.inputs.up) my -= 1;
     if (p.inputs.down) my += 1;
     if (p.inputs.left) mx -= 1;
     if (p.inputs.right) mx += 1;
+    const playerWalls = getWalls(room);
     if (mx || my) {
-      const len = Math.sqrt(mx*mx + my*my);
-      mx = mx/len * speed; my = my/len * speed;
-      const nx = p.x + mx, ny = p.y + my;
-      if (canMove(nx, p.y, PLAYER_RADIUS, room)) p.x = nx;
-      if (canMove(p.x, ny, PLAYER_RADIUS, room)) p.y = ny;
+      const len = Math.sqrt(mx * mx + my * my);
+      mx = mx / len * speed; my = my / len * speed;
+      if (canMove(p.x + mx, p.y, PLAYER_RADIUS, playerWalls)) p.x += mx;
+      if (canMove(p.x, p.y + my, PLAYER_RADIUS, playerWalls)) p.y += my;
       p.moving = true;
     } else {
       p.moving = false;
@@ -289,74 +329,74 @@ function gameTick(room) {
     // Reload
     if (p.reloading && now >= p.reloadEnd) {
       const w = WEAPONS[p.weapon];
-      const needed = w.magSize - p.ammo[p.weapon];
-      const available = Math.min(needed, p.reserve[p.weapon]);
-      p.ammo[p.weapon] += available;
-      p.reserve[p.weapon] -= available;
+      const needed = w.magSize - (p.ammo[p.weapon] || 0);
+      const available = Math.min(needed, p.reserve[p.weapon] || 0);
+      p.ammo[p.weapon] = (p.ammo[p.weapon] || 0) + available;
+      p.reserve[p.weapon] = (p.reserve[p.weapon] || 0) - available;
       p.reloading = false;
     }
-
-    if (p.inputs.reload && !p.reloading && p.ammo[p.weapon] < WEAPONS[p.weapon].magSize && p.reserve[p.weapon] > 0) {
-      p.reloading = true;
-      let reloadTime = WEAPONS[p.weapon].reload;
-      if (p.perks.includes('speedcola')) reloadTime *= 0.5;
-      p.reloadEnd = now + reloadTime;
+    if (p.inputs.reload && !p.reloading) {
+      const w = WEAPONS[p.weapon];
+      if (w && (p.ammo[p.weapon] || 0) < w.magSize && (p.reserve[p.weapon] || 0) > 0) {
+        p.reloading = true;
+        let reloadTime = w.reload;
+        if (p.perks.includes('speedcola')) reloadTime *= 0.5;
+        p.reloadEnd = now + reloadTime;
+      }
     }
 
     // Shooting
     if (p.inputs.shoot && !p.reloading && !p.downed) {
       const w = WEAPONS[p.weapon];
+      if (!w) continue;
       let fireRate = w.fireRate;
-      if (p.perks.includes('doubletap')) fireRate *= 0.7;
-      if (now - p.lastShot >= fireRate && p.ammo[p.weapon] > 0) {
+      if (p.perks.includes('doubletap')) fireRate *= 0.65;
+      if (now - p.lastShot >= fireRate && (p.ammo[p.weapon] || 0) > 0) {
         p.lastShot = now;
         p.ammo[p.weapon]--;
         for (let i = 0; i < w.bulletCount; i++) {
           const spread = (Math.random() - 0.5) * w.spread;
           const angle = p.angle + spread;
           room.bullets.push({
-            x: p.x, y: p.y,
+            x: p.x + Math.cos(p.angle) * 18,
+            y: p.y + Math.sin(p.angle) * 18,
             vx: Math.cos(angle) * BULLET_SPEED,
             vy: Math.sin(angle) * BULLET_SPEED,
             damage: w.damage,
             range: w.range,
             traveled: 0,
             owner: p.id,
-            weapon: p.weapon,
           });
         }
         broadcast(room, { type: 'shot', id: p.id, weapon: p.weapon });
-        if (p.ammo[p.weapon] === 0 && p.reserve[p.weapon] > 0) {
+        if (p.ammo[p.weapon] <= 0 && (p.reserve[p.weapon] || 0) > 0) {
           p.reloading = true;
-          let reloadTime = w.reload;
-          if (p.perks.includes('speedcola')) reloadTime *= 0.5;
-          p.reloadEnd = now + reloadTime;
+          let rt = w.reload;
+          if (p.perks.includes('speedcola')) rt *= 0.5;
+          p.reloadEnd = now + rt;
         }
       }
     }
   }
 
-  // Update bullets
+  // === BULLETS ===
+  const bulletWalls = getWalls(room);
   for (let i = room.bullets.length - 1; i >= 0; i--) {
     const b = room.bullets[i];
     b.x += b.vx; b.y += b.vy;
     b.traveled += BULLET_SPEED;
-    let remove = false;
-    if (b.traveled > b.range || b.x < 0 || b.x > MAP_W || b.y < 0 || b.y > MAP_H) {
-      remove = true;
-    }
-    // Wall collision
-    for (const w of getWalls(room)) {
-      if (b.x >= w.x && b.x <= w.x + w.w && b.y >= w.y && b.y <= w.y + w.h) {
-        remove = true; break;
+    let remove = b.traveled > b.range || b.x < 0 || b.x > MAP_W || b.y < 0 || b.y > MAP_H;
+    if (!remove) {
+      for (const w of bulletWalls) {
+        if (b.x >= w.x && b.x <= w.x + w.w && b.y >= w.y && b.y <= w.y + w.h) {
+          remove = true; break;
+        }
       }
     }
-    // Zombie collision
     if (!remove) {
       for (let j = room.zombies.length - 1; j >= 0; j--) {
         const z = room.zombies[j];
-        const dx = b.x - z.x, dy = b.y - z.y;
-        if (dx*dx + dy*dy < ZOMBIE_RADIUS * ZOMBIE_RADIUS) {
+        if (dist(b.x, b.y, z.x, z.y) < ZOMBIE_RADIUS + 4) {
           z.hp -= b.damage;
           remove = true;
           const owner = room.players.get(b.owner);
@@ -377,93 +417,103 @@ function gameTick(room) {
     if (remove) room.bullets.splice(i, 1);
   }
 
-  // Update zombies
+  // === ZOMBIES ===
   for (const z of room.zombies) {
-    // Find nearest alive player
+    z.attackTimer = Math.max(0, z.attackTimer - dt);
+
+    // Find nearest alive non-downed player
     let nearest = null, nearDist = Infinity;
     for (const p of room.players.values()) {
       if (p.dead) continue;
-      const dx = p.x - z.x, dy = p.y - z.y;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist < nearDist) { nearDist = dist; nearest = p; }
+      const d = dist(p.x, p.y, z.x, z.y);
+      if (d < nearDist) { nearDist = d; nearest = p; }
     }
     if (!nearest) continue;
 
-    // Check for barricade in path
-    let targetBarricade = null;
-    for (const b of room.barricades) {
-      if (b.hp <= 0) continue;
-      const dx = (b.x + b.w/2) - z.x, dy = (b.y + b.h/2) - z.y;
-      if (Math.sqrt(dx*dx + dy*dy) < 60) {
-        targetBarricade = b;
-        break;
+    const zombieWalls = getWallsForZombie(room, z);
+
+    // Phase logic
+    if (z.phase === 'approach_barricade') {
+      const barricade = room.barricades.find(b => b.id === z.targetBarricade);
+      const bd = BARRICADES.find(b => b.id === z.targetBarricade);
+      if (!barricade || !bd || barricade.hp <= 0) {
+        z.phase = 'hunt';
+      } else {
+        const bCenterX = bd.x + bd.w / 2;
+        const bCenterY = bd.y + bd.h / 2;
+        const bDist = dist(z.x, z.y, bCenterX, bCenterY);
+        if (bDist < 30) {
+          z.phase = 'break_barricade';
+        } else {
+          // Move toward barricade (ignore it as wall)
+          moveToward(z, bCenterX, bCenterY, z.speed, zombieWalls, ZOMBIE_RADIUS);
+        }
       }
     }
 
-    if (targetBarricade && targetBarricade.hp > 0) {
-      // Attack barricade
-      z.attackCooldown -= dt;
-      if (z.attackCooldown <= 0) {
-        targetBarricade.hp -= 10;
-        z.attackCooldown = 1000;
-        if (targetBarricade.hp <= 0) {
-          broadcast(room, { type: 'barricadeBreak', id: targetBarricade.id });
-        }
-      }
-    } else {
-      // Move toward player
-      const dx = nearest.x - z.x, dy = nearest.y - z.y;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist > 20) {
-        const mx = (dx / dist) * z.speed;
-        const my = (dy / dist) * z.speed;
-        const nx = z.x + mx, ny = z.y + my;
-        // Simple wall avoidance
-        if (canMove(nx, z.y, ZOMBIE_RADIUS, room)) z.x = nx;
-        else z.stuck++;
-        if (canMove(z.x, ny, ZOMBIE_RADIUS, room)) z.y = ny;
-        else z.stuck++;
-        // If stuck, try to go around
-        if (z.stuck > 30) {
-          z.x += (Math.random() - 0.5) * 10;
-          z.y += (Math.random() - 0.5) * 10;
-          z.stuck = 0;
-        }
-      }
-      // Attack player
-      if (dist < 30 && !nearest.downed) {
-        z.attackCooldown -= dt;
-        if (z.attackCooldown <= 0) {
-          nearest.hp -= z.damage;
-          z.attackCooldown = 1000;
-          if (nearest.hp <= 0) {
-            nearest.downed = true;
-            nearest.downTimer = 30000; // 30 sec to revive
-            nearest.downs++;
-            broadcast(room, { type: 'playerDown', id: nearest.id });
+    if (z.phase === 'break_barricade') {
+      const barricade = room.barricades.find(b => b.id === z.targetBarricade);
+      if (!barricade || barricade.hp <= 0) {
+        z.phase = 'hunt';
+      } else {
+        // Attack the barricade
+        if (z.attackTimer <= 0) {
+          barricade.hp = Math.max(0, barricade.hp - 15);
+          z.attackTimer = 800;
+          if (barricade.hp <= 0) {
+            z.phase = 'hunt';
+            broadcast(room, { type: 'barricadeBreak', id: barricade.id });
           }
-          broadcast(room, { type: 'playerHit', id: nearest.id, hp: nearest.hp });
+        }
+      }
+    }
+
+    if (z.phase === 'hunt') {
+      // Move toward nearest player
+      const moved = moveToward(z, nearest.x, nearest.y, z.speed, zombieWalls, ZOMBIE_RADIUS);
+
+      if (!moved) {
+        z.stuckTimer += dt;
+        if (z.stuckTimer > 500) {
+          // Wall slide: try perpendicular directions
+          z.wanderTimer += dt;
+          const perpAngle = Math.atan2(nearest.y - z.y, nearest.x - z.x) + (z.wanderTimer % 2000 < 1000 ? Math.PI / 2 : -Math.PI / 2);
+          const slideX = z.x + Math.cos(perpAngle) * z.speed * 1.5;
+          const slideY = z.y + Math.sin(perpAngle) * z.speed * 1.5;
+          if (canMove(slideX, z.y, ZOMBIE_RADIUS, zombieWalls)) z.x = slideX;
+          if (canMove(z.x, slideY, ZOMBIE_RADIUS, zombieWalls)) z.y = slideY;
+          if (z.stuckTimer > 3000) z.stuckTimer = 0; // Reset
+        }
+      } else {
+        z.stuckTimer = 0;
+      }
+
+      // Attack player if close
+      if (nearDist < 28 && z.attackTimer <= 0) {
+        nearest.hp -= z.damage;
+        z.attackTimer = 900;
+        broadcast(room, { type: 'playerHit', id: nearest.id, hp: nearest.hp });
+        if (nearest.hp <= 0 && !nearest.downed) {
+          nearest.downed = true;
+          nearest.downTimer = 30000;
+          broadcast(room, { type: 'playerDown', id: nearest.id });
         }
       }
     }
   }
 
   // Check round complete
-  if (room.zombiesRemaining <= 0 && room.zombiesSpawned >= room.zombiesToSpawn) {
-    setTimeout(() => {
-      if (room.state === 'playing') startRound(room);
-    }, 3000);
-    room.zombiesRemaining = -1; // Prevent re-trigger
+  if (room.zombiesRemaining <= 0 && room.zombiesSpawned >= room.zombiesToSpawn && room.roundPause <= 0) {
+    room.roundPause = 4000; // 4 sec between rounds
   }
 
-  // Send state
   broadcastState(room);
 }
 
 // ─── NETWORKING ───
 function broadcast(room, msg) {
   const data = JSON.stringify(msg);
-  for (const [id, p] of room.players) {
+  for (const [, p] of room.players) {
     if (p.ws && p.ws.readyState === 1) p.ws.send(data);
   }
 }
@@ -474,28 +524,25 @@ function broadcastState(room) {
     players.push({
       id: p.id, name: p.name, x: p.x, y: p.y, angle: p.angle, moving: p.moving,
       hp: p.hp, maxHp: p.maxHp, points: p.points, weapon: p.weapon,
-      ammo: p.ammo[p.weapon], reserve: p.reserve[p.weapon],
+      ammo: p.ammo[p.weapon] || 0, reserve: p.reserve[p.weapon] || 0,
       reloading: p.reloading, kills: p.kills, perks: p.perks,
       downed: p.downed, dead: p.dead, weapons: p.weapons,
     });
   }
-  const zombies = room.zombies.map(z => ({ id: z.id, x: z.x, y: z.y, hp: z.hp, maxHp: z.maxHp }));
+  const zombies = room.zombies.map(z => ({ id: z.id, x: z.x, y: z.y, hp: z.hp, maxHp: z.maxHp, phase: z.phase }));
   const barricades = room.barricades.map(b => ({ id: b.id, hp: b.hp, maxHp: b.maxHp }));
-  const state = {
-    type: 'state',
-    players, zombies, barricades,
+  broadcast(room, {
+    type: 'state', players, zombies, barricades,
     round: room.round,
     zombiesRemaining: Math.max(0, room.zombiesRemaining),
     powerOn: room.powerOn,
     doors: room.doors.map(d => ({ id: d.id, open: d.open })),
-  };
-  broadcast(room, state);
+  });
 }
 
 function getPlayerStats(room) {
   return [...room.players.values()].map(p => ({
-    name: p.name, kills: p.kills, headshots: p.headshots,
-    revives: p.revives, downs: p.downs, points: p.points,
+    name: p.name, kills: p.kills, revives: p.revives, downs: p.downs, points: p.points,
   }));
 }
 
@@ -525,7 +572,7 @@ wss.on('connection', (ws) => {
       case 'join': {
         const room = rooms.get(msg.code?.toUpperCase());
         if (!room) { ws.send(JSON.stringify({ type: 'error', msg: 'Room not found' })); break; }
-        if (room.state !== 'lobby') { ws.send(JSON.stringify({ type: 'error', msg: 'Game already started' })); break; }
+        if (room.state !== 'lobby') { ws.send(JSON.stringify({ type: 'error', msg: 'Game in progress' })); break; }
         if (room.players.size >= 4) { ws.send(JSON.stringify({ type: 'error', msg: 'Room full' })); break; }
         const player = createPlayer(playerId, msg.name || 'Player');
         player.ws = ws;
@@ -544,7 +591,7 @@ wss.on('connection', (ws) => {
         broadcast(currentRoom, { type: 'gameStart' });
         startRound(currentRoom);
         currentRoom.lastTick = Date.now();
-        currentRoom.tickInterval = setInterval(() => gameTick(currentRoom), 1000 / TICK_RATE);
+        currentRoom.tickInterval = setInterval(() => gameTick(currentRoom), TICK_MS);
         break;
       }
       case 'input': {
@@ -559,27 +606,25 @@ wss.on('connection', (ws) => {
         if (!currentRoom) break;
         const p = currentRoom.players.get(playerId);
         if (!p || p.dead || p.downed) break;
+
         // Buy door
         for (const d of currentRoom.doors) {
           if (d.open) continue;
-          const dx = (d.x + d.w/2) - p.x, dy = (d.y + d.h/2) - p.y;
-          if (Math.sqrt(dx*dx + dy*dy) < 80 && p.points >= d.price) {
+          const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
+          if (dist(p.x, p.y, cx, cy) < 80 && p.points >= d.price) {
             p.points -= d.price;
             d.open = true;
             broadcast(currentRoom, { type: 'doorOpen', id: d.id });
           }
         }
-        // Buy wall weapon
+        // Wall buy
         for (const wb of WALLBUYS) {
-          const dx = wb.x - p.x, dy = wb.y - p.y;
-          if (Math.sqrt(dx*dx + dy*dy) < 60) {
+          if (dist(p.x, p.y, wb.x, wb.y) < 60) {
             const w = WEAPONS[wb.weapon];
             if (p.points >= w.price) {
               if (!p.weapons.includes(wb.weapon)) {
                 if (p.weapons.length >= 2) {
-                  // Replace current weapon
-                  const idx = p.weapons.indexOf(p.weapon);
-                  p.weapons[idx] = wb.weapon;
+                  p.weapons[p.weapons.indexOf(p.weapon)] = wb.weapon;
                 } else {
                   p.weapons.push(wb.weapon);
                 }
@@ -589,66 +634,53 @@ wss.on('connection', (ws) => {
               p.reserve[wb.weapon] = w.maxAmmo;
               p.points -= w.price;
               p.reloading = false;
-              broadcast(currentRoom, { type: 'weaponBuy', id: p.id, weapon: wb.weapon });
             }
           }
         }
-        // Buy perk
+        // Perks
         if (currentRoom.powerOn) {
           for (const pl of PERK_LOCATIONS) {
-            const dx = pl.x - p.x, dy = pl.y - p.y;
-            if (Math.sqrt(dx*dx + dy*dy) < 60) {
+            if (dist(p.x, p.y, pl.x, pl.y) < 60) {
               const perk = PERKS[pl.perk];
               if (p.points >= perk.price && !p.perks.includes(pl.perk)) {
                 p.points -= perk.price;
                 p.perks.push(pl.perk);
                 if (pl.perk === 'juggernog') { p.maxHp = 250; p.hp = Math.min(p.hp + 150, 250); }
-                broadcast(currentRoom, { type: 'perkBuy', id: p.id, perk: pl.perk });
               }
             }
           }
         }
         // Mystery box
         {
-          const dx = (MYSTERY_BOX.x + 30) - p.x, dy = (MYSTERY_BOX.y + 20) - p.y;
-          if (Math.sqrt(dx*dx + dy*dy) < 60 && p.points >= MYSTERY_BOX.price) {
-            const allWeapons = Object.keys(WEAPONS);
-            const randomWeapon = allWeapons[Math.floor(Math.random() * allWeapons.length)];
+          const mbx = MYSTERY_BOX.x + 30, mby = MYSTERY_BOX.y + 20;
+          if (dist(p.x, p.y, mbx, mby) < 60 && p.points >= MYSTERY_BOX.price) {
+            const allW = Object.keys(WEAPONS);
+            const rw = allW[Math.floor(Math.random() * allW.length)];
             p.points -= MYSTERY_BOX.price;
-            if (!p.weapons.includes(randomWeapon)) {
-              if (p.weapons.length >= 2) {
-                const idx = p.weapons.indexOf(p.weapon);
-                p.weapons[idx] = randomWeapon;
-              } else {
-                p.weapons.push(randomWeapon);
-              }
+            if (!p.weapons.includes(rw)) {
+              if (p.weapons.length >= 2) p.weapons[p.weapons.indexOf(p.weapon)] = rw;
+              else p.weapons.push(rw);
             }
-            p.weapon = randomWeapon;
-            const w = WEAPONS[randomWeapon];
-            p.ammo[randomWeapon] = w.magSize;
-            p.reserve[randomWeapon] = w.maxAmmo;
+            p.weapon = rw;
+            p.ammo[rw] = WEAPONS[rw].magSize;
+            p.reserve[rw] = WEAPONS[rw].maxAmmo;
             p.reloading = false;
-            broadcast(currentRoom, { type: 'mysteryBox', id: p.id, weapon: randomWeapon });
+            broadcast(currentRoom, { type: 'mysteryBox', id: p.id, weapon: rw });
           }
         }
         // Power switch
-        if (!currentRoom.powerOn) {
-          const dx = POWER_SWITCH.x - p.x, dy = POWER_SWITCH.y - p.y;
-          if (Math.sqrt(dx*dx + dy*dy) < 60) {
-            currentRoom.powerOn = true;
-            broadcast(currentRoom, { type: 'powerOn' });
-          }
+        if (!currentRoom.powerOn && dist(p.x, p.y, POWER_SWITCH.x, POWER_SWITCH.y) < 60) {
+          currentRoom.powerOn = true;
+          broadcast(currentRoom, { type: 'powerOn' });
         }
         // Repair barricade
         for (const b of currentRoom.barricades) {
-          if (b.hp >= b.maxHp) continue;
-          const bx = b.x + b.w/2, by = b.y + b.h/2;
-          const dx = bx - p.x, dy = by - p.y;
-          if (Math.sqrt(dx*dx + dy*dy) < 60 && Date.now() - p.lastBarricadeRepair > 500) {
-            b.hp = Math.min(b.hp + 20, b.maxHp);
+          const bd = BARRICADES.find(bb => bb.id === b.id);
+          if (!bd || b.hp >= b.maxHp) continue;
+          if (dist(p.x, p.y, bd.x + bd.w / 2, bd.y + bd.h / 2) < 60 && Date.now() - p.lastBarricadeRepair > 400) {
+            b.hp = Math.min(b.hp + 25, b.maxHp);
             p.points += 10;
             p.lastBarricadeRepair = Date.now();
-            broadcast(currentRoom, { type: 'barricadeRepair', id: b.id, hp: b.hp });
           }
         }
         break;
@@ -657,9 +689,8 @@ wss.on('connection', (ws) => {
         if (!currentRoom) break;
         const p = currentRoom.players.get(playerId);
         if (!p || p.dead || p.downed) break;
-        const curIdx = p.weapons.indexOf(p.weapon);
-        const nextIdx = (curIdx + 1) % p.weapons.length;
-        p.weapon = p.weapons[nextIdx];
+        const idx = p.weapons.indexOf(p.weapon);
+        p.weapon = p.weapons[(idx + 1) % p.weapons.length];
         p.reloading = false;
         break;
       }
@@ -689,7 +720,7 @@ function getMapData(room) {
     width: MAP_W, height: MAP_H,
     walls: WALLS,
     doors: room.doors,
-    barricades: room.barricades.map(b => ({ ...b })),
+    barricades: BARRICADES,
     wallbuys: WALLBUYS.map(wb => ({ ...wb, ...WEAPONS[wb.weapon] })),
     perkLocations: PERK_LOCATIONS.map(pl => ({ ...pl, ...PERKS[pl.perk] })),
     mysteryBox: MYSTERY_BOX,
