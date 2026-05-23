@@ -2,76 +2,91 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
 <title>ZOMBIES</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #0a0a0a; color: #e0e0e0; font-family: 'Courier New', monospace; overflow: hidden; }
+html, body { height: 100%; overflow: hidden; touch-action: none; }
+body { background: #0a0a0a; color: #e0e0e0; font-family: 'Courier New', monospace; }
 canvas { display: block; cursor: crosshair; }
 
-/* Menu */
 #menu { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, #0a0a0a 0%, #1a0a0a 100%); z-index: 100; }
-#menu h1 { font-size: 72px; color: #cc0000; text-shadow: 0 0 30px #cc000066, 0 0 60px #cc000033; margin-bottom: 10px; letter-spacing: 8px; }
-#menu .sub { color: #666; font-size: 14px; margin-bottom: 40px; }
-#menu input { background: #1a1a1a; border: 1px solid #333; color: #e0e0e0; padding: 12px 20px; font-size: 16px; font-family: inherit; margin: 5px; width: 260px; text-align: center; outline: none; }
+#menu h1 { font-size: min(72px, 14vw); color: #cc0000; text-shadow: 0 0 30px #cc000066; margin-bottom: 10px; letter-spacing: 6px; }
+#menu .sub { color: #666; font-size: 14px; margin-bottom: 30px; }
+#menu input { background: #1a1a1a; border: 1px solid #333; color: #e0e0e0; padding: 12px 20px; font-size: 16px; font-family: inherit; margin: 5px; width: 260px; max-width: 80vw; text-align: center; outline: none; border-radius: 4px; }
 #menu input:focus { border-color: #cc0000; }
-#menu button { background: #cc0000; color: white; border: none; padding: 14px 40px; font-size: 16px; font-family: inherit; cursor: pointer; margin: 5px; width: 260px; letter-spacing: 2px; transition: all 0.2s; }
-#menu button:hover { background: #ff2222; transform: scale(1.02); }
-#menu .row { display: flex; gap: 10px; margin-top: 10px; }
-#menu .join-row { display: flex; gap: 5px; }
-#menu .join-row input { width: 160px; }
-#menu .join-row button { width: 95px; padding: 12px; }
+#menu button { background: #cc0000; color: white; border: none; padding: 14px 40px; font-size: 16px; font-family: inherit; cursor: pointer; margin: 5px; width: 260px; max-width: 80vw; letter-spacing: 2px; border-radius: 4px; }
+#menu .join-row { display: flex; gap: 5px; max-width: 80vw; }
+#menu .join-row input { width: 160px; flex: 1; }
+#menu .join-row button { width: 90px; flex: 0 0 90px; padding: 12px; }
 #menu .error { color: #ff4444; font-size: 13px; margin-top: 10px; min-height: 20px; }
 
-/* Lobby */
 #lobby { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0a; z-index: 90; }
-#lobby h2 { font-size: 32px; color: #cc0000; margin-bottom: 5px; }
-#lobby .code { font-size: 48px; color: #ff4444; letter-spacing: 12px; margin: 10px 0 30px; }
+#lobby h2 { font-size: 28px; color: #cc0000; margin-bottom: 5px; }
+#lobby .code { font-size: 40px; color: #ff4444; letter-spacing: 10px; margin: 10px 0 25px; }
 #lobby .players { list-style: none; }
 #lobby .players li { font-size: 18px; padding: 8px 0; border-bottom: 1px solid #222; min-width: 200px; text-align: center; }
 #lobby .players li .host { color: #cc0000; font-size: 12px; }
-#lobby button { background: #cc0000; color: white; border: none; padding: 14px 40px; font-size: 16px; font-family: inherit; cursor: pointer; margin-top: 30px; letter-spacing: 2px; }
-#lobby .wait { color: #666; margin-top: 30px; font-size: 14px; }
+#lobby button { background: #cc0000; color: white; border: none; padding: 14px 40px; font-size: 16px; font-family: inherit; cursor: pointer; margin-top: 25px; letter-spacing: 2px; border-radius: 4px; }
+#lobby .wait { color: #666; margin-top: 25px; font-size: 14px; }
 
-/* HUD */
 #hud { position: fixed; bottom: 0; left: 0; right: 0; display: none; z-index: 50; pointer-events: none; }
-.hud-bar { display: flex; justify-content: space-between; align-items: flex-end; padding: 15px 20px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); }
-.hud-left { display: flex; flex-direction: column; gap: 4px; }
-.hud-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.hud-center { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); display: none; z-index: 50; pointer-events: none; }
-.round-display { font-size: 28px; color: #cc0000; text-shadow: 0 0 20px #cc000066; }
-.hp-bar { width: 200px; height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
+.hud-bar { display: flex; justify-content: space-between; align-items: flex-end; padding: 10px 15px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); }
+.hud-left { display: flex; flex-direction: column; gap: 3px; }
+.hud-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.hud-center { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); display: none; z-index: 50; pointer-events: none; }
+.round-display { font-size: 22px; color: #cc0000; text-shadow: 0 0 20px #cc000066; }
+.hp-bar { width: min(200px, 30vw); height: 5px; background: #333; border-radius: 3px; overflow: hidden; }
 .hp-fill { height: 100%; background: #cc0000; transition: width 0.3s; }
-.points { font-size: 28px; color: #ffcc00; text-shadow: 0 0 10px #ffcc0066; }
-.weapon-info { font-size: 14px; color: #aaa; }
-.ammo { font-size: 24px; color: #fff; }
-.ammo span { color: #888; font-size: 16px; }
-.perks { display: flex; gap: 6px; }
-.perk-icon { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #fff3; }
-.kills-display { font-size: 12px; color: #888; }
-.zombies-left { font-size: 12px; color: #cc0000; }
-.interact-prompt { position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); display: none; z-index: 50; pointer-events: none; background: rgba(0,0,0,0.7); padding: 8px 20px; border: 1px solid #cc000066; font-size: 14px; color: #e0e0e0; }
+.points { font-size: 22px; color: #ffcc00; text-shadow: 0 0 10px #ffcc0066; }
+.weapon-info { font-size: 12px; color: #aaa; }
+.ammo { font-size: 20px; color: #fff; }
+.ammo span { color: #888; font-size: 14px; }
+.perks { display: flex; gap: 4px; }
+.perk-icon { width: 20px; height: 20px; border-radius: 3px; border: 1px solid #fff3; }
+.kills-display { font-size: 11px; color: #888; }
+.zombies-left { font-size: 11px; color: #cc0000; }
+.interact-prompt { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); display: none; z-index: 55; pointer-events: none; background: rgba(0,0,0,0.8); padding: 6px 16px; border: 1px solid #cc000066; font-size: 13px; color: #e0e0e0; white-space: nowrap; border-radius: 4px; }
 .interact-prompt .key { color: #ffcc00; font-weight: bold; }
 
-/* Game Over */
-#gameover { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); z-index: 200; }
-#gameover h1 { font-size: 64px; color: #cc0000; margin-bottom: 20px; }
-#gameover .round-info { font-size: 24px; color: #888; margin-bottom: 30px; }
-#gameover table { border-collapse: collapse; }
-#gameover th, #gameover td { padding: 8px 20px; text-align: center; border-bottom: 1px solid #222; }
+#gameover { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.92); z-index: 200; padding: 20px; }
+#gameover h1 { font-size: min(56px, 12vw); color: #cc0000; margin-bottom: 15px; }
+#gameover .round-info { font-size: 20px; color: #888; margin-bottom: 20px; }
+#gameover table { border-collapse: collapse; font-size: 14px; }
+#gameover th, #gameover td { padding: 6px 12px; text-align: center; border-bottom: 1px solid #222; }
 #gameover th { color: #cc0000; }
-#gameover button { background: #cc0000; color: white; border: none; padding: 14px 40px; font-size: 16px; font-family: inherit; cursor: pointer; margin-top: 30px; letter-spacing: 2px; }
+#gameover button { background: #cc0000; color: white; border: none; padding: 14px 40px; font-size: 16px; font-family: inherit; cursor: pointer; margin-top: 20px; letter-spacing: 2px; border-radius: 4px; }
 
-/* Round announce */
-.round-announce { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 64px; color: #cc0000; text-shadow: 0 0 40px #cc0000; z-index: 60; pointer-events: none; opacity: 0; transition: opacity 0.5s; }
+.round-announce { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: min(56px, 14vw); color: #cc0000; text-shadow: 0 0 40px #cc0000; z-index: 60; pointer-events: none; opacity: 0; transition: opacity 0.5s; }
 .round-announce.show { opacity: 1; }
+
+/* ─── TOUCH CONTROLS ─── */
+#touch-controls { display: none; position: fixed; inset: 0; z-index: 45; pointer-events: none; }
+.touch-joystick { position: absolute; bottom: 30px; left: 30px; width: 130px; height: 130px; pointer-events: auto; }
+.joy-base { width: 130px; height: 130px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15); position: absolute; }
+.joy-stick { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.25); border: 2px solid rgba(255,255,255,0.35); position: absolute; top: 40px; left: 40px; transition: none; }
+.touch-aim-area { position: absolute; top: 0; right: 0; bottom: 0; left: 45%; pointer-events: auto; }
+.touch-btn { position: absolute; pointer-events: auto; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-family: 'Courier New'; font-weight: bold; color: rgba(255,255,255,0.7); user-select: none; -webkit-user-select: none; }
+.touch-btn:active, .touch-btn.active { transform: scale(0.9); }
+#btn-interact { bottom: 30px; right: 30px; width: 60px; height: 60px; background: rgba(255,204,0,0.2); border: 2px solid rgba(255,204,0,0.4); }
+#btn-reload { bottom: 100px; right: 30px; width: 50px; height: 50px; background: rgba(100,150,255,0.2); border: 2px solid rgba(100,150,255,0.4); }
+#btn-switch { bottom: 160px; right: 30px; width: 50px; height: 50px; background: rgba(150,150,150,0.2); border: 2px solid rgba(150,150,150,0.4); }
+
+/* Mobile HUD adjustments */
+@media (max-width: 768px) {
+  .hud-bar { padding: 8px 10px 60px 10px; }
+  .interact-prompt { bottom: 180px; font-size: 12px; }
+  #btn-interact { bottom: 25px; right: 20px; }
+  #btn-reload { bottom: 95px; right: 20px; }
+  #btn-switch { bottom: 155px; right: 20px; }
+}
 </style>
 </head>
 <body>
 <div id="menu">
   <h1>ZOMBIES</h1>
   <div class="sub">Top-Down Survival</div>
-  <input type="text" id="nameInput" placeholder="Enter your name" maxlength="12" value="">
+  <input type="text" id="nameInput" placeholder="Enter your name" maxlength="12">
   <button onclick="createGame()">CREATE GAME</button>
   <div class="join-row">
     <input type="text" id="codeInput" placeholder="Room code" maxlength="6" style="text-transform:uppercase">
@@ -88,6 +103,17 @@ canvas { display: block; cursor: crosshair; }
 </div>
 
 <canvas id="game"></canvas>
+
+<div id="touch-controls">
+  <div class="touch-joystick" id="joystick">
+    <div class="joy-base"></div>
+    <div class="joy-stick" id="joyStick"></div>
+  </div>
+  <div class="touch-aim-area" id="aimArea"></div>
+  <div class="touch-btn" id="btn-interact">USE</div>
+  <div class="touch-btn" id="btn-reload">R</div>
+  <div class="touch-btn" id="btn-switch">SW</div>
+</div>
 
 <div id="hud">
   <div class="hud-bar">
@@ -118,23 +144,26 @@ canvas { display: block; cursor: crosshair; }
 </div>
 
 <script>
-// ─── CONFIG ───
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 let W, H;
 function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
 window.addEventListener('resize', resize); resize();
 
-// ─── STATE ───
-let ws = null;
-let myId = null;
-let isHost = false;
-let gameState = null;
-let mapData = null;
+// Detect touch device
+const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+let ws = null, myId = null, isHost = false, gameState = null, mapData = null;
 let camera = { x: 0, y: 0 };
 let mouse = { x: W/2, y: H/2 };
 let keys = {};
-let effects = []; // visual effects
+let effects = [];
+
+// ─── TOUCH STATE ───
+let touchMove = { active: false, id: null, dx: 0, dy: 0 }; // joystick
+let touchAim = { active: false, id: null, x: 0, y: 0, shooting: false }; // aim + shoot
+let touchAimAngle = 0;
+let autoShoot = false;
 
 // ─── MENU ───
 function createGame() {
@@ -155,70 +184,42 @@ function connect(onOpen) {
   ws.onerror = () => { document.getElementById('menuError').textContent = 'Connection failed'; };
 }
 
-// ─── MESSAGE HANDLER ───
 function handleMessage(msg) {
   switch (msg.type) {
     case 'joined':
-      myId = msg.playerId;
-      isHost = msg.isHost;
-      mapData = msg.map;
+      myId = msg.playerId; isHost = msg.isHost; mapData = msg.map;
       document.getElementById('menu').style.display = 'none';
       document.getElementById('lobby').style.display = 'flex';
       document.getElementById('roomCode').textContent = msg.code;
       break;
     case 'lobby': {
       const list = document.getElementById('lobbyPlayers');
-      list.innerHTML = msg.players.map(p =>
-        `<li>${p.name} ${p.isHost ? '<span class="host">(HOST)</span>' : ''}</li>`
-      ).join('');
+      list.innerHTML = msg.players.map(p => `<li>${p.name} ${p.isHost ? '<span class="host">(HOST)</span>' : ''}</li>`).join('');
       const actions = document.getElementById('lobbyActions');
-      if (isHost) {
-        actions.innerHTML = `<button onclick="startGame()">START GAME</button>`;
-      } else {
-        actions.innerHTML = `<div class="wait">Waiting for host to start...</div>`;
-      }
+      actions.innerHTML = isHost ? `<button onclick="startGame()">START GAME</button>` : `<div class="wait">Waiting for host...</div>`;
       break;
     }
     case 'gameStart':
       document.getElementById('lobby').style.display = 'none';
       document.getElementById('hud').style.display = 'block';
       document.getElementById('hudCenter').style.display = 'block';
+      if (isMobile) document.getElementById('touch-controls').style.display = 'block';
       gameLoop();
       break;
-    case 'state':
-      gameState = msg;
-      break;
-    case 'round':
-      showRoundAnnounce(msg.round);
-      break;
+    case 'state': gameState = msg; break;
+    case 'round': showRoundAnnounce(msg.round); break;
     case 'shot': {
       const p = gameState?.players.find(p => p.id === msg.id);
       if (p) effects.push({ type: 'muzzle', x: p.x, y: p.y, angle: p.angle, t: 6 });
       break;
     }
-    case 'zombieDeath':
-      effects.push({ type: 'blood', x: msg.x, y: msg.y, t: 30 });
-      break;
-    case 'playerHit': {
-      const p = gameState?.players.find(p => p.id === msg.id);
-      if (p && msg.id === myId) effects.push({ type: 'hit', t: 15 });
-      break;
-    }
-    case 'playerDown':
-      if (msg.id === myId) effects.push({ type: 'down', t: 999 });
-      break;
-    case 'revive':
-      if (msg.revived === myId) effects = effects.filter(e => e.type !== 'down');
-      break;
-    case 'powerOn':
-      effects.push({ type: 'flash', t: 20 });
-      break;
-    case 'gameover':
-      showGameOver(msg);
-      break;
-    case 'error':
-      document.getElementById('menuError').textContent = msg.msg;
-      break;
+    case 'zombieDeath': effects.push({ type: 'blood', x: msg.x, y: msg.y, t: 30 }); break;
+    case 'playerHit': if (msg.id === myId) effects.push({ type: 'hit', t: 15 }); break;
+    case 'playerDown': if (msg.id === myId) effects.push({ type: 'down', t: 999 }); break;
+    case 'revive': if (msg.revived === myId) effects = effects.filter(e => e.type !== 'down'); break;
+    case 'powerOn': effects.push({ type: 'flash', t: 20 }); break;
+    case 'gameover': showGameOver(msg); break;
+    case 'error': document.getElementById('menuError').textContent = msg.msg; break;
   }
 }
 
@@ -233,63 +234,160 @@ function showRoundAnnounce(round) {
 
 function showGameOver(msg) {
   document.getElementById('gameover').style.display = 'flex';
-  document.getElementById('goRound').textContent = `You survived ${msg.round} rounds`;
+  if (isMobile) document.getElementById('touch-controls').style.display = 'none';
+  document.getElementById('goRound').textContent = `Survived ${msg.round} rounds`;
   const table = document.getElementById('goStats');
-  let html = '<tr><th>Player</th><th>Kills</th><th>Downs</th><th>Revives</th><th>Points</th></tr>';
-  for (const p of msg.players) {
-    html += `<tr><td>${p.name}</td><td>${p.kills}</td><td>${p.downs}</td><td>${p.revives}</td><td>${p.points}</td></tr>`;
-  }
+  let html = '<tr><th>Name</th><th>Kills</th><th>Downs</th><th>Rev</th><th>Pts</th></tr>';
+  for (const p of msg.players) html += `<tr><td>${p.name}</td><td>${p.kills}</td><td>${p.downs}</td><td>${p.revives}</td><td>${p.points}</td></tr>`;
   table.innerHTML = html;
 }
 
-// ─── INPUT ───
+// ─── KEYBOARD INPUT ───
 window.addEventListener('keydown', (e) => {
   keys[e.key.toLowerCase()] = true;
-  if (e.key.toLowerCase() === 'e' || e.key.toLowerCase() === 'f') {
-    ws?.send(JSON.stringify({ type: 'interact' }));
-  }
-  if (e.key.toLowerCase() === 'q' || e.key === '1' || e.key === '2') {
-    ws?.send(JSON.stringify({ type: 'switch' }));
-  }
-  if (e.key.toLowerCase() === 'r') {
-    keys.reload = true;
-  }
+  if (e.key.toLowerCase() === 'e' || e.key.toLowerCase() === 'f') ws?.send(JSON.stringify({ type: 'interact' }));
+  if (e.key.toLowerCase() === 'q' || e.key === '1' || e.key === '2') ws?.send(JSON.stringify({ type: 'switch' }));
+  if (e.key.toLowerCase() === 'r') keys.reload = true;
 });
-window.addEventListener('keyup', (e) => {
-  keys[e.key.toLowerCase()] = false;
-  if (e.key.toLowerCase() === 'r') keys.reload = false;
-});
+window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; if (e.key.toLowerCase() === 'r') keys.reload = false; });
 window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
-window.addEventListener('mousedown', () => { keys.shoot = true; });
-window.addEventListener('mouseup', () => { keys.shoot = false; });
+window.addEventListener('mousedown', (e) => { if (!isMobile) keys.shoot = true; });
+window.addEventListener('mouseup', (e) => { if (!isMobile) keys.shoot = false; });
 window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ─── TOUCH CONTROLS ───
+const joystickEl = document.getElementById('joystick');
+const joyStickEl = document.getElementById('joyStick');
+const aimAreaEl = document.getElementById('aimArea');
+
+// Joystick (left thumb)
+joystickEl?.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  touchMove.active = true;
+  touchMove.id = t.identifier;
+  touchMove.startX = t.clientX;
+  touchMove.startY = t.clientY;
+}, { passive: false });
+
+window.addEventListener('touchmove', (e) => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === touchMove.id && touchMove.active) {
+      const dx = t.clientX - touchMove.startX;
+      const dy = t.clientY - touchMove.startY;
+      const maxDist = 45;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const clampDist = Math.min(dist, maxDist);
+      const angle = Math.atan2(dy, dx);
+      touchMove.dx = (clampDist / maxDist) * Math.cos(angle);
+      touchMove.dy = (clampDist / maxDist) * Math.sin(angle);
+      // Move joystick visual
+      joyStickEl.style.left = (40 + (clampDist * Math.cos(angle))) + 'px';
+      joyStickEl.style.top = (40 + (clampDist * Math.sin(angle))) + 'px';
+    }
+    if (t.identifier === touchAim.id && touchAim.active) {
+      touchAim.x = t.clientX;
+      touchAim.y = t.clientY;
+    }
+  }
+}, { passive: false });
+
+window.addEventListener('touchend', (e) => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === touchMove.id) {
+      touchMove.active = false; touchMove.id = null; touchMove.dx = 0; touchMove.dy = 0;
+      joyStickEl.style.left = '40px'; joyStickEl.style.top = '40px';
+    }
+    if (t.identifier === touchAim.id) {
+      touchAim.active = false; touchAim.id = null; touchAim.shooting = false;
+      autoShoot = false;
+    }
+  }
+});
+
+// Aim area (right side) — touch to aim + auto-shoot
+aimAreaEl?.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  touchAim.active = true;
+  touchAim.id = t.identifier;
+  touchAim.x = t.clientX;
+  touchAim.y = t.clientY;
+  touchAim.shooting = true;
+  autoShoot = true;
+}, { passive: false });
+
+// Action buttons
+document.getElementById('btn-interact')?.addEventListener('touchstart', (e) => {
+  e.preventDefault(); ws?.send(JSON.stringify({ type: 'interact' }));
+}, { passive: false });
+document.getElementById('btn-reload')?.addEventListener('touchstart', (e) => {
+  e.preventDefault(); keys.reload = true;
+  setTimeout(() => { keys.reload = false; }, 200);
+}, { passive: false });
+document.getElementById('btn-switch')?.addEventListener('touchstart', (e) => {
+  e.preventDefault(); ws?.send(JSON.stringify({ type: 'switch' }));
+}, { passive: false });
+
+// Prevent default touch behaviors on canvas
+canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
 // ─── GAME LOOP ───
 function gameLoop() {
   if (!gameState) { requestAnimationFrame(gameLoop); return; }
-
-  // Send inputs
   const me = gameState.players.find(p => p.id === myId);
   if (me) {
-    const worldMouseX = mouse.x + camera.x;
-    const worldMouseY = mouse.y + camera.y;
-    const angle = Math.atan2(worldMouseY - me.y, worldMouseX - me.x);
+    let angle;
+    let moveUp = !!(keys.w || keys.arrowup);
+    let moveDown = !!(keys.s || keys.arrowdown);
+    let moveLeft = !!(keys.a || keys.arrowleft);
+    let moveRight = !!(keys.d || keys.arrowright);
+    let shooting = !!keys.shoot;
+
+    if (isMobile) {
+      // Joystick movement
+      const deadzone = 0.15;
+      if (Math.abs(touchMove.dx) > deadzone || Math.abs(touchMove.dy) > deadzone) {
+        moveUp = touchMove.dy < -deadzone;
+        moveDown = touchMove.dy > deadzone;
+        moveLeft = touchMove.dx < -deadzone;
+        moveRight = touchMove.dx > deadzone;
+      }
+      // Aim from touch
+      if (touchAim.active) {
+        const worldX = touchAim.x + camera.x;
+        const worldY = touchAim.y + camera.y;
+        angle = Math.atan2(worldY - me.y, worldX - me.x);
+        shooting = true;
+      } else {
+        // Auto-aim at nearest zombie when not touching aim area
+        let nearZ = null, nearD = Infinity;
+        for (const z of gameState.zombies) {
+          const d = Math.sqrt((z.x-me.x)**2 + (z.y-me.y)**2);
+          if (d < nearD && d < 400) { nearD = d; nearZ = z; }
+        }
+        if (nearZ) {
+          angle = Math.atan2(nearZ.y - me.y, nearZ.x - me.x);
+        } else {
+          angle = me.angle || 0;
+        }
+        shooting = false;
+      }
+    } else {
+      const worldMouseX = mouse.x + camera.x;
+      const worldMouseY = mouse.y + camera.y;
+      angle = Math.atan2(worldMouseY - me.y, worldMouseX - me.x);
+    }
+
     ws.send(JSON.stringify({
       type: 'input',
-      inputs: {
-        up: !!(keys.w || keys.arrowup),
-        down: !!(keys.s || keys.arrowdown),
-        left: !!(keys.a || keys.arrowleft),
-        right: !!(keys.d || keys.arrowright),
-        shoot: !!keys.shoot,
-        reload: !!keys.reload || !!keys.r,
-      },
+      inputs: { up: moveUp, down: moveDown, left: moveLeft, right: moveRight, shoot: shooting, reload: !!keys.reload },
       angle,
     }));
 
-    // Camera follow
-    camera.x += (me.x - W/2 - camera.x) * 0.1;
-    camera.y += (me.y - H/2 - camera.y) * 0.1;
+    camera.x += (me.x - W/2 - camera.x) * 0.12;
+    camera.y += (me.y - H/2 - camera.y) * 0.12;
     camera.x = Math.max(0, Math.min(camera.x, mapData.width - W));
     camera.y = Math.max(0, Math.min(camera.y, mapData.height - H));
   }
@@ -310,30 +408,33 @@ function render() {
   ctx.fillStyle = '#1a1a1a';
   ctx.fillRect(0, 0, mapData.width, mapData.height);
   // Grid
-  ctx.strokeStyle = '#222';
+  ctx.strokeStyle = '#1f1f1f';
   ctx.lineWidth = 0.5;
   for (let x = 0; x < mapData.width; x += 50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,mapData.height); ctx.stroke(); }
   for (let y = 0; y < mapData.height; y += 50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(mapData.width,y); ctx.stroke(); }
 
   // Walls
-  ctx.fillStyle = '#333';
-  for (const w of mapData.walls) ctx.fillRect(w.x, w.y, w.w, w.h);
+  ctx.fillStyle = '#2a2a2a';
+  ctx.strokeStyle = '#3a3a3a';
+  ctx.lineWidth = 1;
+  for (const w of mapData.walls) { ctx.fillRect(w.x, w.y, w.w, w.h); ctx.strokeRect(w.x, w.y, w.w, w.h); }
 
-  // Doors (closed)
+  // Doors
   for (const d of gameState.doors) {
     const door = mapData.doors.find(dd => dd.id === d.id);
     if (!d.open && door) {
-      ctx.fillStyle = '#664400';
+      ctx.fillStyle = '#774411';
       ctx.fillRect(door.x, door.y, door.w, door.h);
-      // Price label
+      ctx.strokeStyle = '#995522';
+      ctx.strokeRect(door.x, door.y, door.w, door.h);
       const me = gameState.players.find(p => p.id === myId);
       if (me) {
-        const dx = (door.x + door.w/2) - me.x, dy = (door.y + door.h/2) - me.y;
+        const dx = (door.x+door.w/2)-me.x, dy = (door.y+door.h/2)-me.y;
         if (Math.sqrt(dx*dx+dy*dy) < 120) {
           ctx.fillStyle = '#ffcc00';
-          ctx.font = '12px Courier New';
+          ctx.font = '11px Courier New';
           ctx.textAlign = 'center';
-          ctx.fillText(`[F] ${door.label} - ${door.price}pts`, door.x + door.w/2, door.y - 10);
+          ctx.fillText(`${door.label} - ${door.price}pts`, door.x+door.w/2, door.y-8);
         }
       }
     }
@@ -342,307 +443,226 @@ function render() {
   // Barricades
   for (const b of gameState.barricades) {
     const bd = mapData.barricades.find(bb => bb.id === b.id);
-    if (bd) {
-      const ratio = b.hp / b.maxHp;
-      ctx.fillStyle = ratio > 0.5 ? '#8B4513' : ratio > 0 ? '#654321' : '#333';
+    if (!bd) continue;
+    const ratio = b.hp / b.maxHp;
+    if (ratio > 0) {
+      ctx.fillStyle = ratio > 0.5 ? '#8B4513' : '#654321';
       ctx.fillRect(bd.x, bd.y, bd.w, bd.h);
-      if (ratio > 0 && ratio < 1) {
-        // HP bar
-        ctx.fillStyle = '#222';
-        ctx.fillRect(bd.x - 5, bd.y - 8, bd.w + 10, 4);
-        ctx.fillStyle = ratio > 0.5 ? '#4a4' : '#a44';
-        ctx.fillRect(bd.x - 5, bd.y - 8, (bd.w + 10) * ratio, 4);
+      // Plank lines
+      ctx.strokeStyle = '#5a3010';
+      ctx.lineWidth = 1;
+      const isVert = bd.h > bd.w;
+      if (isVert) {
+        for (let i = 0; i < 3; i++) { const yy = bd.y + bd.h * (i+1)/4; ctx.beginPath(); ctx.moveTo(bd.x, yy); ctx.lineTo(bd.x+bd.w, yy); ctx.stroke(); }
+      } else {
+        for (let i = 0; i < 3; i++) { const xx = bd.x + bd.w * (i+1)/4; ctx.beginPath(); ctx.moveTo(xx, bd.y); ctx.lineTo(xx, bd.y+bd.h); ctx.stroke(); }
       }
+      if (ratio < 1) {
+        ctx.fillStyle = '#222'; ctx.fillRect(bd.x-2, bd.y-7, bd.w+4, 3);
+        ctx.fillStyle = ratio > 0.5 ? '#4a4' : '#a44'; ctx.fillRect(bd.x-2, bd.y-7, (bd.w+4)*ratio, 3);
+      }
+    } else {
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(bd.x, bd.y, bd.w, bd.h);
+      ctx.strokeStyle = '#333'; ctx.lineWidth = 0.5; ctx.strokeRect(bd.x, bd.y, bd.w, bd.h);
     }
   }
 
   // Wall buys
   for (const wb of mapData.wallbuys) {
-    ctx.fillStyle = '#2a2a4a';
-    ctx.fillRect(wb.x - 20, wb.y - 15, 40, 30);
-    ctx.strokeStyle = '#4a4aaa';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(wb.x - 20, wb.y - 15, 40, 30);
-    ctx.fillStyle = '#8888ff';
-    ctx.font = '10px Courier New';
-    ctx.textAlign = 'center';
-    ctx.fillText(wb.name, wb.x, wb.y + 2);
-    ctx.fillText(`${wb.price}`, wb.x, wb.y + 12);
+    ctx.fillStyle = '#1a1a3a';
+    ctx.fillRect(wb.x-22, wb.y-17, 44, 34);
+    ctx.strokeStyle = '#4444aa'; ctx.lineWidth = 1; ctx.strokeRect(wb.x-22, wb.y-17, 44, 34);
+    ctx.fillStyle = '#7777dd'; ctx.font = '10px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText(wb.name, wb.x, wb.y); ctx.fillText(`${wb.price}`, wb.x, wb.y+11);
   }
 
   // Perk machines
   for (const pl of mapData.perkLocations) {
-    ctx.fillStyle = gameState.powerOn ? pl.color : '#333';
-    ctx.fillRect(pl.x - 15, pl.y - 20, 30, 40);
-    ctx.strokeStyle = '#fff3';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(pl.x - 15, pl.y - 20, 30, 40);
-    ctx.fillStyle = gameState.powerOn ? '#fff' : '#555';
-    ctx.font = '8px Courier New';
-    ctx.textAlign = 'center';
-    ctx.fillText(pl.name, pl.x, pl.y);
-    if (gameState.powerOn) ctx.fillText(`${pl.price}`, pl.x, pl.y + 10);
+    const active = gameState.powerOn;
+    ctx.fillStyle = active ? pl.color + '44' : '#222';
+    ctx.fillRect(pl.x-16, pl.y-22, 32, 44);
+    ctx.strokeStyle = active ? pl.color : '#444'; ctx.lineWidth = 1.5; ctx.strokeRect(pl.x-16, pl.y-22, 32, 44);
+    ctx.fillStyle = active ? '#fff' : '#555'; ctx.font = '8px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText(pl.name, pl.x, pl.y-2);
+    if (active) { ctx.fillStyle = '#ffcc00'; ctx.fillText(`${pl.price}`, pl.x, pl.y+9); }
   }
 
   // Mystery box
-  {
-    const mb = mapData.mysteryBox;
-    ctx.fillStyle = '#553300';
-    ctx.fillRect(mb.x, mb.y, mb.w, mb.h);
-    ctx.strokeStyle = '#ffcc00';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(mb.x, mb.y, mb.w, mb.h);
-    ctx.fillStyle = '#ffcc00';
-    ctx.font = '10px Courier New';
-    ctx.textAlign = 'center';
-    ctx.fillText('? BOX ?', mb.x + mb.w/2, mb.y + mb.h/2 + 3);
-    ctx.fillText(`${mb.price}`, mb.x + mb.w/2, mb.y + mb.h + 12);
+  { const mb = mapData.mysteryBox;
+    ctx.fillStyle = '#442200'; ctx.fillRect(mb.x, mb.y, mb.w, mb.h);
+    ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 1.5; ctx.strokeRect(mb.x, mb.y, mb.w, mb.h);
+    ctx.fillStyle = '#ffcc00'; ctx.font = '11px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText('? BOX ?', mb.x+mb.w/2, mb.y+mb.h/2+4);
+    ctx.font = '9px Courier New'; ctx.fillText(`${mb.price}`, mb.x+mb.w/2, mb.y+mb.h+11);
   }
 
   // Power switch
-  {
-    const ps = mapData.powerSwitch;
-    ctx.fillStyle = gameState.powerOn ? '#44ff44' : '#444';
-    ctx.fillRect(ps.x - 10, ps.y - 15, 20, 30);
-    ctx.fillStyle = '#fff';
-    ctx.font = '8px Courier New';
-    ctx.textAlign = 'center';
-    ctx.fillText(gameState.powerOn ? 'ON' : 'PWR', ps.x, ps.y + 3);
+  { const ps = mapData.powerSwitch;
+    ctx.fillStyle = gameState.powerOn ? '#22aa22' : '#444';
+    ctx.fillRect(ps.x-12, ps.y-18, 24, 36);
+    ctx.strokeStyle = gameState.powerOn ? '#44ff44' : '#666'; ctx.lineWidth = 1; ctx.strokeRect(ps.x-12, ps.y-18, 24, 36);
+    ctx.fillStyle = '#fff'; ctx.font = '9px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText(gameState.powerOn ? 'ON' : 'PWR', ps.x, ps.y+3);
   }
 
   // Zombies
   for (const z of gameState.zombies) {
     const hpRatio = z.hp / z.maxHp;
-    // Body
-    ctx.fillStyle = `rgb(${60 + Math.floor(hpRatio * 40)}, ${80 + Math.floor(hpRatio * 50)}, ${40})`;
-    ctx.beginPath();
-    ctx.arc(z.x, z.y, 12, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = z.phase === 'hunt' ? `rgb(${50+Math.floor(hpRatio*50)}, ${70+Math.floor(hpRatio*60)}, 35)` : `rgb(60, 80, 45)`;
+    ctx.beginPath(); ctx.arc(z.x, z.y, 12, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
     // Eyes
-    ctx.fillStyle = '#ff0';
-    ctx.beginPath(); ctx.arc(z.x - 4, z.y - 3, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(z.x + 4, z.y - 3, 2, 0, Math.PI * 2); ctx.fill();
-    // HP bar
+    ctx.fillStyle = z.phase === 'hunt' ? '#ff2200' : '#ffaa00';
+    ctx.beginPath(); ctx.arc(z.x-4, z.y-3, 2.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(z.x+4, z.y-3, 2.5, 0, Math.PI*2); ctx.fill();
     if (hpRatio < 1) {
-      ctx.fillStyle = '#222';
-      ctx.fillRect(z.x - 12, z.y - 20, 24, 3);
-      ctx.fillStyle = hpRatio > 0.5 ? '#4a4' : '#a44';
-      ctx.fillRect(z.x - 12, z.y - 20, 24 * hpRatio, 3);
+      ctx.fillStyle = '#000a'; ctx.fillRect(z.x-12, z.y-19, 24, 4);
+      ctx.fillStyle = hpRatio > 0.5 ? '#4a4' : '#a44'; ctx.fillRect(z.x-12, z.y-19, 24*hpRatio, 4);
     }
   }
 
   // Players
   for (const p of gameState.players) {
     if (p.dead) continue;
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.rotate(p.angle);
-
-    // Body
-    if (p.downed) {
-      ctx.fillStyle = '#884444';
-      ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 200) * 0.3;
-    } else if (p.id === myId) {
-      ctx.fillStyle = '#4488ff';
-    } else {
-      ctx.fillStyle = '#44cc44';
-    }
-    ctx.beginPath();
-    ctx.arc(0, 0, 14, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
+    if (p.downed) { ctx.fillStyle = '#884444'; ctx.globalAlpha = 0.5+Math.sin(Date.now()/200)*0.3; }
+    else if (p.id === myId) { ctx.fillStyle = '#3377ee'; }
+    else { ctx.fillStyle = '#33bb33'; }
+    ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#0004'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.globalAlpha = 1;
-
-    // Gun
-    ctx.fillStyle = '#888';
-    ctx.fillRect(8, -2, 14, 4);
-
-    // Direction indicator
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(6, 0, 2, 0, Math.PI * 2);
-    ctx.fill();
-
+    ctx.fillStyle = '#999'; ctx.fillRect(10, -2.5, 14, 5); // gun
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(7, 0, 2, 0, Math.PI*2); ctx.fill(); // dot
     ctx.restore();
-
     // Name
-    ctx.fillStyle = p.id === myId ? '#4488ff' : '#44cc44';
-    ctx.font = '10px Courier New';
-    ctx.textAlign = 'center';
-    ctx.fillText(p.name, p.x, p.y - 22);
-
-    // Perk indicators
-    if (p.perks.length > 0) {
-      p.perks.forEach((perk, i) => {
-        const colors = { juggernog: '#ff4444', speedcola: '#44ff44', doubletap: '#ffff44', quickrevive: '#4444ff' };
-        ctx.fillStyle = colors[perk] || '#fff';
-        ctx.fillRect(p.x - (p.perks.length * 5) + i * 10, p.y + 18, 8, 3);
-      });
-    }
+    ctx.fillStyle = p.id === myId ? '#5588ff' : '#44cc44';
+    ctx.font = 'bold 10px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText(p.name, p.x, p.y-22);
+    // Perk dots
+    p.perks.forEach((perk, i) => {
+      const colors = { juggernog:'#ff4444', speedcola:'#44ff44', doubletap:'#ffff44', quickrevive:'#4444ff' };
+      ctx.fillStyle = colors[perk]||'#fff';
+      ctx.beginPath(); ctx.arc(p.x-(p.perks.length*4)+i*8, p.y+20, 3, 0, Math.PI*2); ctx.fill();
+    });
   }
 
   // Effects
-  for (let i = effects.length - 1; i >= 0; i--) {
-    const e = effects[i];
-    e.t--;
-    if (e.t <= 0) { effects.splice(i, 1); continue; }
+  for (let i = effects.length-1; i >= 0; i--) {
+    const e = effects[i]; e.t--;
+    if (e.t <= 0) { effects.splice(i,1); continue; }
     if (e.type === 'muzzle') {
-      ctx.fillStyle = `rgba(255, 200, 50, ${e.t / 6})`;
-      ctx.beginPath();
-      ctx.arc(e.x + Math.cos(e.angle) * 24, e.y + Math.sin(e.angle) * 24, 6 + (6 - e.t), 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillStyle = `rgba(255,220,80,${e.t/6})`;
+      ctx.beginPath(); ctx.arc(e.x+Math.cos(e.angle)*26, e.y+Math.sin(e.angle)*26, 5+(6-e.t)*1.5, 0, Math.PI*2); ctx.fill();
     } else if (e.type === 'blood') {
-      ctx.fillStyle = `rgba(150, 0, 0, ${e.t / 30})`;
-      for (let j = 0; j < 5; j++) {
-        ctx.beginPath();
-        ctx.arc(e.x + (Math.random()-0.5)*20, e.y + (Math.random()-0.5)*20, 3, 0, Math.PI*2);
-        ctx.fill();
-      }
+      ctx.fillStyle = `rgba(140,0,0,${e.t/30})`;
+      for (let j=0;j<6;j++) { ctx.beginPath(); ctx.arc(e.x+(Math.random()-0.5)*24, e.y+(Math.random()-0.5)*24, 2+Math.random()*2, 0, Math.PI*2); ctx.fill(); }
     }
   }
-
   ctx.restore();
 
   // Screen effects
   for (const e of effects) {
-    if (e.type === 'hit') {
-      ctx.fillStyle = `rgba(255, 0, 0, ${e.t / 30})`;
-      ctx.fillRect(0, 0, W, H);
-    } else if (e.type === 'down') {
-      ctx.fillStyle = `rgba(100, 0, 0, ${0.3 + Math.sin(Date.now()/500)*0.1})`;
-      ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = '#ff4444';
-      ctx.font = '24px Courier New';
-      ctx.textAlign = 'center';
-      ctx.fillText('YOU ARE DOWN - NEED REVIVE', W/2, H/2);
-    } else if (e.type === 'flash') {
-      ctx.fillStyle = `rgba(255, 255, 255, ${e.t / 20})`;
-      ctx.fillRect(0, 0, W, H);
+    if (e.type === 'hit') { ctx.fillStyle=`rgba(200,0,0,${e.t/25})`; ctx.fillRect(0,0,W,H); }
+    else if (e.type === 'down') {
+      ctx.fillStyle=`rgba(80,0,0,${0.35+Math.sin(Date.now()/500)*0.1})`; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#ff4444'; ctx.font=`${isMobile?'18':'24'}px Courier New`; ctx.textAlign='center';
+      ctx.fillText('NEED REVIVE', W/2, H/2);
     }
+    else if (e.type === 'flash') { ctx.fillStyle=`rgba(255,255,255,${e.t/20})`; ctx.fillRect(0,0,W,H); }
   }
 
-  // Fog / visibility (vignette)
-  const gradient = ctx.createRadialGradient(W/2, H/2, Math.min(W,H) * 0.3, W/2, H/2, Math.min(W,H) * 0.7);
-  gradient.addColorStop(0, 'rgba(0,0,0,0)');
-  gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, W, H);
+  // Vignette
+  const g = ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.25, W/2,H/2,Math.min(W,H)*0.65);
+  g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,0.55)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
 
-  // Minimap
+  // Minimap (smaller on mobile)
   renderMinimap();
-
-  // Interact prompt
-  checkInteractPrompt();
+  if (!isMobile) checkInteractPrompt();
+  else checkInteractPromptMobile();
 }
 
 function renderMinimap() {
-  const mmW = 160, mmH = 120;
-  const mmX = W - mmW - 15, mmY = 15;
-  const sx = mmW / mapData.width, sy = mmH / mapData.height;
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.fillRect(mmX, mmY, mmW, mmH);
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(mmX, mmY, mmW, mmH);
-  // Walls
-  ctx.fillStyle = '#444';
-  for (const w of mapData.walls) {
-    ctx.fillRect(mmX + w.x*sx, mmY + w.y*sy, Math.max(w.w*sx, 1), Math.max(w.h*sy, 1));
-  }
-  // Players
+  const mmW = isMobile ? 100 : 150, mmH = isMobile ? 70 : 105;
+  const mmX = W-mmW-10, mmY = isMobile ? 40 : 10;
+  const sx = mmW/mapData.width, sy = mmH/mapData.height;
+  ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(mmX,mmY,mmW,mmH);
+  ctx.strokeStyle='#333'; ctx.lineWidth=1; ctx.strokeRect(mmX,mmY,mmW,mmH);
+  ctx.fillStyle='#3a3a3a';
+  for (const w of mapData.walls) ctx.fillRect(mmX+w.x*sx, mmY+w.y*sy, Math.max(w.w*sx,1), Math.max(w.h*sy,1));
   for (const p of gameState.players) {
     if (p.dead) continue;
-    ctx.fillStyle = p.id === myId ? '#4488ff' : '#44cc44';
-    ctx.fillRect(mmX + p.x*sx - 2, mmY + p.y*sy - 2, 4, 4);
+    ctx.fillStyle = p.id===myId ? '#4488ff' : '#44cc44';
+    ctx.fillRect(mmX+p.x*sx-2, mmY+p.y*sy-2, 4, 4);
   }
-  // Zombies
-  ctx.fillStyle = '#ff4444';
-  for (const z of gameState.zombies) {
-    ctx.fillRect(mmX + z.x*sx - 1, mmY + z.y*sy - 1, 2, 2);
-  }
+  ctx.fillStyle='#ff3333';
+  for (const z of gameState.zombies) ctx.fillRect(mmX+z.x*sx-1, mmY+z.y*sy-1, 2, 2);
 }
 
 function checkInteractPrompt() {
   const me = gameState?.players.find(p => p.id === myId);
   const prompt = document.getElementById('interactPrompt');
-  if (!me || me.dead || me.downed) { prompt.style.display = 'none'; return; }
+  if (!me || me.dead || me.downed) { prompt.style.display='none'; return; }
+  let text = getInteractText(me, '[F]');
+  if (text) { prompt.innerHTML=text; prompt.style.display='block'; } else { prompt.style.display='none'; }
+}
 
-  let text = '';
-  // Doors
+function checkInteractPromptMobile() {
+  const me = gameState?.players.find(p => p.id === myId);
+  const prompt = document.getElementById('interactPrompt');
+  if (!me || me.dead || me.downed) { prompt.style.display='none'; return; }
+  let text = getInteractText(me, 'USE');
+  if (text) { prompt.innerHTML=text; prompt.style.display='block'; } else { prompt.style.display='none'; }
+}
+
+function getInteractText(me, keyLabel) {
   for (const ds of gameState.doors) {
     if (ds.open) continue;
-    const door = mapData.doors.find(d => d.id === ds.id);
-    if (!door) continue;
-    const dx = (door.x + door.w/2) - me.x, dy = (door.y + door.h/2) - me.y;
-    if (Math.sqrt(dx*dx + dy*dy) < 80) {
-      text = `<span class="key">[F]</span> Open ${door.label} - <span style="color:#ffcc00">${door.price}</span> pts`;
-    }
+    const door = mapData.doors.find(d=>d.id===ds.id); if (!door) continue;
+    if (Math.sqrt((door.x+door.w/2-me.x)**2+(door.y+door.h/2-me.y)**2) < 80)
+      return `<span class="key">[${keyLabel}]</span> ${door.label} <span style="color:#ffcc00">${door.price}</span>`;
   }
-  // Wall buys
   for (const wb of mapData.wallbuys) {
-    const dx = wb.x - me.x, dy = wb.y - me.y;
-    if (Math.sqrt(dx*dx + dy*dy) < 60) {
-      text = `<span class="key">[F]</span> Buy ${wb.name} - <span style="color:#ffcc00">${wb.price}</span> pts`;
-    }
+    if (Math.sqrt((wb.x-me.x)**2+(wb.y-me.y)**2) < 60)
+      return `<span class="key">[${keyLabel}]</span> ${wb.name} <span style="color:#ffcc00">${wb.price}</span>`;
   }
-  // Perks
   if (gameState.powerOn) {
     for (const pl of mapData.perkLocations) {
-      const dx = pl.x - me.x, dy = pl.y - me.y;
-      if (Math.sqrt(dx*dx + dy*dy) < 60 && !me.perks.includes(pl.perk)) {
-        text = `<span class="key">[F]</span> Buy ${pl.name} - <span style="color:#ffcc00">${pl.price}</span> pts`;
-      }
+      if (Math.sqrt((pl.x-me.x)**2+(pl.y-me.y)**2) < 60 && !me.perks.includes(pl.perk))
+        return `<span class="key">[${keyLabel}]</span> ${pl.name} <span style="color:#ffcc00">${pl.price}</span>`;
     }
   }
-  // Mystery box
-  {
-    const mb = mapData.mysteryBox;
-    const dx = (mb.x+30) - me.x, dy = (mb.y+20) - me.y;
-    if (Math.sqrt(dx*dx+dy*dy) < 60) {
-      text = `<span class="key">[F]</span> Mystery Box - <span style="color:#ffcc00">${mb.price}</span> pts`;
-    }
-  }
-  // Power
+  const mb = mapData.mysteryBox;
+  if (Math.sqrt((mb.x+30-me.x)**2+(mb.y+20-me.y)**2) < 60)
+    return `<span class="key">[${keyLabel}]</span> Mystery Box <span style="color:#ffcc00">${mb.price}</span>`;
   if (!gameState.powerOn) {
     const ps = mapData.powerSwitch;
-    const dx = ps.x - me.x, dy = ps.y - me.y;
-    if (Math.sqrt(dx*dx+dy*dy) < 60) {
-      text = `<span class="key">[F]</span> Turn on Power`;
-    }
+    if (Math.sqrt((ps.x-me.x)**2+(ps.y-me.y)**2) < 60) return `<span class="key">[${keyLabel}]</span> Power`;
   }
-  // Barricade repair
   for (const b of gameState.barricades) {
-    const bd = mapData.barricades.find(bb => bb.id === b.id);
+    const bd = mapData.barricades.find(bb=>bb.id===b.id);
     if (!bd || b.hp >= b.maxHp) continue;
-    const dx = (bd.x+bd.w/2) - me.x, dy = (bd.y+bd.h/2) - me.y;
-    if (Math.sqrt(dx*dx+dy*dy) < 60) {
-      text = `<span class="key">[F]</span> Repair Barricade - <span style="color:#ffcc00">+10</span> pts`;
-    }
+    if (Math.sqrt((bd.x+bd.w/2-me.x)**2+(bd.y+bd.h/2-me.y)**2) < 60)
+      return `<span class="key">[${keyLabel}]</span> Repair <span style="color:#ffcc00">+10</span>`;
   }
-
-  if (text) {
-    prompt.innerHTML = text;
-    prompt.style.display = 'block';
-  } else {
-    prompt.style.display = 'none';
-  }
+  return '';
 }
 
 function updateHUD() {
   const me = gameState?.players.find(p => p.id === myId);
   if (!me) return;
-  document.getElementById('hpFill').style.width = `${(me.hp / me.maxHp) * 100}%`;
-  document.getElementById('hpFill').style.background = me.hp > 50 ? '#cc0000' : '#ff0000';
+  document.getElementById('hpFill').style.width = `${(me.hp/me.maxHp)*100}%`;
+  document.getElementById('hpFill').style.background = me.hp > me.maxHp*0.4 ? '#cc0000' : '#ff0000';
   document.getElementById('pointsDisplay').textContent = me.points;
   document.getElementById('weaponName').textContent = mapData.weapons[me.weapon]?.name || me.weapon;
   document.getElementById('ammoDisplay').innerHTML = `${me.ammo} <span>/ ${me.reserve}</span>`;
   document.getElementById('roundDisplay').textContent = gameState.round;
   document.getElementById('killsDisplay').textContent = `Kills: ${me.kills}`;
   document.getElementById('zombiesLeft').textContent = `Zombies: ${gameState.zombiesRemaining}`;
-  // Perks
-  const perksEl = document.getElementById('perksDisplay');
-  perksEl.innerHTML = me.perks.map(p => {
-    const colors = { juggernog: '#ff4444', speedcola: '#44ff44', doubletap: '#ffff44', quickrevive: '#4444ff' };
-    return `<div class="perk-icon" style="background:${colors[p]||'#888'}" title="${p}"></div>`;
+  document.getElementById('perksDisplay').innerHTML = me.perks.map(p => {
+    const c = {juggernog:'#ff4444',speedcola:'#44ff44',doubletap:'#ffff44',quickrevive:'#4444ff'};
+    return `<div class="perk-icon" style="background:${c[p]||'#888'}"></div>`;
   }).join('');
 }
 </script>
