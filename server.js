@@ -39,12 +39,22 @@ const PERKS = {
 
 // ─── SIMPLIFIED MAP ───
 // Smaller, more open map so zombies can actually reach players
+// Outer walls have gaps where barricades are — zombies spawn outside and break through
 const WALLS = [
-  // Outer boundary
+  // Top boundary
   { x: 0, y: 0, w: MAP_W, h: 16 },
-  { x: 0, y: MAP_H - 16, w: MAP_W, h: 16 },
-  { x: 0, y: 0, w: 16, h: MAP_H },
-  { x: MAP_W - 16, y: 0, w: 16, h: MAP_H },
+  // Bottom boundary — gap for b6 at x:700 w:70
+  { x: 0, y: MAP_H - 16, w: 700, h: 16 },
+  { x: 770, y: MAP_H - 16, w: MAP_W - 770, h: 16 },
+  // Left boundary — gaps for b1 (y:150 h:70), b2 (y:600 h:70), b3 (y:1100 h:70)
+  { x: 0, y: 0, w: 16, h: 150 },
+  { x: 0, y: 220, w: 16, h: 380 },   // between b1 and b2
+  { x: 0, y: 670, w: 16, h: 430 },   // between b2 and b3
+  { x: 0, y: 1170, w: 16, h: MAP_H - 1170 },  // after b3
+  // Right boundary — gaps for b4 (y:300 h:70), b5 (y:900 h:70)
+  { x: MAP_W - 16, y: 0, w: 16, h: 300 },
+  { x: MAP_W - 16, y: 370, w: 16, h: 530 },  // between b4 and b5
+  { x: MAP_W - 16, y: 970, w: 16, h: MAP_H - 970 },  // after b5
 
   // Room 1 (spawn) dividers — left side wall with door gap
   { x: 500, y: 0, w: 16, h: 300 },
@@ -421,13 +431,19 @@ function gameTick(room) {
   for (const z of room.zombies) {
     z.attackTimer = Math.max(0, z.attackTimer - dt);
 
-    // Find nearest alive non-downed player
+    // Find nearest alive non-downed player (prefer standing, fall back to downed)
     let nearest = null, nearDist = Infinity;
+    let nearestDowned = null, nearDownedDist = Infinity;
     for (const p of room.players.values()) {
       if (p.dead) continue;
       const d = dist(p.x, p.y, z.x, z.y);
-      if (d < nearDist) { nearDist = d; nearest = p; }
+      if (p.downed) {
+        if (d < nearDownedDist) { nearDownedDist = d; nearestDowned = p; }
+      } else {
+        if (d < nearDist) { nearDist = d; nearest = p; }
+      }
     }
+    if (!nearest) { nearest = nearestDowned; nearDist = nearDownedDist; }
     if (!nearest) continue;
 
     const zombieWalls = getWallsForZombie(room, z);
@@ -496,6 +512,7 @@ function gameTick(room) {
         if (nearest.hp <= 0 && !nearest.downed) {
           nearest.downed = true;
           nearest.downTimer = 30000;
+          nearest.downs++;
           broadcast(room, { type: 'playerDown', id: nearest.id });
         }
       }
